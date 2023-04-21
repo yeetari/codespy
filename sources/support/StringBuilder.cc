@@ -1,28 +1,29 @@
-#include <support/StringBuilder.hh>
+#include <codespy/support/StringBuilder.hh>
 
-#include <container/Array.hh>
-#include <container/Vector.hh>
-#include <support/Span.hh>
-#include <support/String.hh>
-#include <support/StringView.hh>
-#include <support/Utility.hh>
+#include <codespy/container/Array.hh>
+#include <codespy/container/Vector.hh>
+#include <codespy/support/Span.hh>
+#include <codespy/support/String.hh>
+#include <codespy/support/StringView.hh>
+#include <codespy/support/Utility.hh>
 
-#include <stdint.h>
-#include <stdio.h>
+#include <algorithm>
+#include <cstdint>
+#include <cstdio>
 
-namespace jamf {
+namespace codespy {
 
 void StringBuilder::append_single(double arg, const char *) {
     // TODO: Own implementation.
     Array<char, 20> buf{};
     int length = snprintf(buf.data(), buf.size(), "%f", arg); // NOLINT
-    m_buffer.extend(StringView(buf.data(), std::min(buf.size(), static_cast<uint32_t>(length))));
+    m_buffer.extend(StringView(buf.data(), std::min(buf.size(), static_cast<std::size_t>(length))));
 }
 
-void StringBuilder::append_single(size_t arg, const char *opts) {
+void StringBuilder::append_single(std::size_t arg, const char *opts) {
     const size_t base = opts[0] == 'h' ? 16 : 10;
     Array<char, 30> buf{};
-    uint8_t len = 0;
+    std::uint8_t len = 0;
     do {
         auto digit = static_cast<char>(arg % base);
         buf[len++] = digit < 10 ? '0' + digit : 'a' + digit - 10; // NOLINT
@@ -31,7 +32,7 @@ void StringBuilder::append_single(size_t arg, const char *opts) {
 
     if (const char pad = opts[1]; pad != '\0') {
         const char pad_char = opts[2] != '\0' ? opts[2] : '0';
-        for (uint8_t i = len; i < pad - '0'; i++) {
+        for (std::uint8_t i = len; i < pad - '0'; i++) {
             buf[len++] = pad_char;
         }
     }
@@ -39,7 +40,7 @@ void StringBuilder::append_single(size_t arg, const char *opts) {
         buf[len++] = 'x';
         buf[len++] = '0';
     }
-    for (uint8_t i = len; i > 0; i--) {
+    for (std::uint8_t i = len; i > 0; i--) {
         m_buffer.push(buf[i - 1]);
     }
 }
@@ -52,7 +53,7 @@ void StringBuilder::append(char ch) {
     m_buffer.push(ch);
 }
 
-void StringBuilder::truncate(size_t by) {
+void StringBuilder::truncate(std::size_t by) {
     for (size_t i = 0; i < by; i++) {
         m_buffer.pop();
     }
@@ -68,4 +69,4 @@ String StringBuilder::build_copy() const {
     return String::copy_raw(m_buffer.data(), m_buffer.size());
 }
 
-} // namespace jamf
+} // namespace codespy

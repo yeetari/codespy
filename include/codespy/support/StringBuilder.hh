@@ -1,39 +1,40 @@
 #pragma once
 
-#include <container/Array.hh>
-#include <container/Vector.hh>
-#include <support/Span.hh>
-#include <support/String.hh>
-#include <support/StringView.hh>
+#include <codespy/container/Array.hh>
+#include <codespy/container/Vector.hh>
+#include <codespy/support/Integral.hh>
+#include <codespy/support/Span.hh>
+#include <codespy/support/String.hh>
+#include <codespy/support/StringView.hh>
 
-#include <stddef.h>
-#include <stdint.h>
+#include <cstddef>
+#include <cstdint>
 
 // TODO: Testing and benchmarking.
 // TODO: Compile time format strings + checking?
 
-namespace jamf {
+namespace codespy {
 
 class StringBuilder {
     LargeVector<char> m_buffer;
 
     void append_single(double, const char *);
-    void append_single(size_t, const char *);
+    void append_single(std::size_t, const char *);
     void append_single(StringView, const char *);
 
     template <Integral T>
     void append_single(T arg, const char *opts) {
-        append_single(static_cast<size_t>(arg), opts);
+        append_single(static_cast<std::size_t>(arg), opts);
     }
 
     template <typename T>
-    void append_part(StringView fmt, size_t &index, const T &arg);
+    void append_part(StringView fmt, std::size_t &index, const T &arg);
 
 public:
     template <typename... Args>
     void append(StringView fmt, const Args &...args);
     void append(char ch);
-    void truncate(size_t by);
+    void truncate(std::size_t by);
 
     String build();
     String build_copy() const;
@@ -63,9 +64,9 @@ void StringBuilder::append_part(StringView fmt, size_t &index, const T &arg) {
 
 template <typename... Args>
 void StringBuilder::append(StringView fmt, const Args &...args) {
-    size_t index = 0;
+    std::size_t index = 0;
     (append_part(fmt, index, args), ...);
-    m_buffer.extend(LargeSpan<const char>{fmt.begin() + index, fmt.length() - index});
+    m_buffer.extend(codespy::make_span(fmt.begin() + index, fmt.length() - index));
 }
 
-} // namespace jamf
+} // namespace codespy

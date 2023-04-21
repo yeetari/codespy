@@ -165,8 +165,6 @@ Checks: >
   readability-uppercase-literal-suffix,
 FormatStyle: file
 CheckOptions:
-  - key: bugprone-assert-side-effect.AssertMacros
-    value: assert,assert_PEDANTIC
   - key: performance-unnecessary-value-param.AllowedTypes
     value: Optional
   - key: readability-uppercase-literal-suffix.NewSuffixes

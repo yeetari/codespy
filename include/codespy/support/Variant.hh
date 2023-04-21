@@ -1,12 +1,13 @@
 #pragma once
 
-#include <support/Union.hh>
-#include <support/Utility.hh>
+#include <codespy/support/Union.hh>
+#include <codespy/support/Utility.hh>
 
-#include <assert.h>
-#include <stdint.h>
+#include <cassert>
+#include <cstdint>
+#include <utility>
 
-namespace jamf {
+namespace codespy {
 
 template <typename... Ts>
 class Variant {
@@ -16,7 +17,7 @@ class Variant {
 
 private:
     Union<Ts...> m_union;
-    uint8_t m_index;
+    std::uint8_t m_index;
 
     template <typename T>
     static consteval auto index_of() {
@@ -37,7 +38,7 @@ private:
         if (from.m_index != Variant<Us...>::template index_of<T>()) {
             return false;
         }
-        m_union.template set<T>(move(from.m_union.template get<T>()));
+        m_union.template set<T>(std::move(from.m_union.template get<T>()));
         m_index = from.m_index;
         return true;
     }
@@ -76,7 +77,7 @@ public:
     template <ContainsType<Ts...> T>
     Variant(const T &value) : m_union(value), m_index(index_of<T>()) {}
     template <ContainsType<Ts...> T>
-    Variant(T &&value) : m_union(move(value)), m_index(index_of<T>()) {} // NOLINT
+    Variant(T &&value) : m_union(std::move(value)), m_index(index_of<T>()) {} // NOLINT
     Variant(const Variant &) = delete;
     template <ContainsType<Ts...>... Us>
     Variant(Variant<Us...> &&);
@@ -101,7 +102,7 @@ public:
     template <ContainsType<Ts...> T>
     void set(T &&value);
 
-    uint8_t index() const { return m_index; }
+    std::uint8_t index() const { return m_index; }
 };
 
 template <typename... Ts>
@@ -166,4 +167,4 @@ void Variant<Ts...>::set(T &&value) {
     m_index = index_of<T>();
 }
 
-} // namespace jamf
+} // namespace codespy

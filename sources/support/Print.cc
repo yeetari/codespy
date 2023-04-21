@@ -1,16 +1,16 @@
-#include <support/Print.hh>
+#include <codespy/support/Print.hh>
 
-#include <stdio.h>
+#include <cstdio>
 
-namespace jamf {
+namespace codespy {
 
 void print(StringView line) {
-    fwrite(line.data(), 1, line.length(), stdout);
+    std::fwrite(line.data(), 1, line.length(), stdout);
 }
 
 void println(StringView line) {
     print(line);
-    fputc('\n', stdout);
+    std::fputc('\n', stdout);
 }
 
-} // namespace jamf
+} // namespace codespy

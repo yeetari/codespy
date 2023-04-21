@@ -1,6 +1,6 @@
 #pragma once
 
-namespace jamf {
+namespace codespy {
 
 enum class StreamError {
     NotImplemented,
@@ -8,4 +8,4 @@ enum class StreamError {
     Unknown,
 };
 
-} // namespace jamf
+} // namespace codespy

@@ -1,10 +1,11 @@
 #pragma once
 
-#include <container/Array.hh>
-#include <support/Assert.hh>
-#include <support/Utility.hh>
+#include <codespy/container/Array.hh>
+#include <codespy/support/Utility.hh>
 
-namespace jamf {
+#include <utility>
+
+namespace codespy {
 
 template <typename T>
 class Optional {
@@ -14,7 +15,7 @@ class Optional {
 public:
     constexpr Optional() = default;
     Optional(const T &value) : m_present(true) { m_storage.set(value); }
-    Optional(T &&value) : m_present(true) { m_storage.set(move(value)); }
+    Optional(T &&value) : m_present(true) { m_storage.set(std::move(value)); }
     // clang-format off
     Optional(const Optional &) requires is_trivially_copyable<T> = default;
     // clang-format on
@@ -46,7 +47,7 @@ public:
     constexpr Optional() = default;
     Optional(T &ref) : m_ptr(&ref) {}
     Optional(const Optional &) = default;
-    Optional(Optional &&other) : m_ptr(exchange(other.m_ptr, nullptr)) {}
+    Optional(Optional &&other) : m_ptr(std::exchange(other.m_ptr, nullptr)) {}
     ~Optional() = default;
 
     Optional &operator=(const Optional &) = default;
@@ -75,7 +76,7 @@ Optional<T>::Optional(const Optional &other) : m_present(other.m_present) {
 template <typename T>
 Optional<T>::Optional(Optional &&other) : m_present(other.m_present) {
     if (other) {
-        m_storage.set(move(*other));
+        m_storage.set(std::move(*other));
         other.clear();
     }
 }
@@ -98,7 +99,7 @@ Optional<T> &Optional<T>::operator=(Optional &&other) {
         clear();
         m_present = other.m_present;
         if (other) {
-            m_storage.set(move(*other));
+            m_storage.set(std::move(*other));
             other.clear();
         }
     }
@@ -119,7 +120,7 @@ template <typename T>
 template <typename... Args>
 T &Optional<T>::emplace(Args &&...args) {
     clear();
-    m_storage.emplace(forward<Args>(args)...);
+    m_storage.emplace(std::forward<Args>(args)...);
     m_present = true;
     return operator*();
 }
@@ -150,7 +151,7 @@ const T *Optional<T>::operator->() const {
 
 template <typename T>
 Optional<T &> &Optional<T &>::operator=(Optional &&other) {
-    m_ptr = exchange(other.m_ptr, nullptr);
+    m_ptr = std::exchange(other.m_ptr, nullptr);
     return *this;
 }
 
@@ -183,4 +184,4 @@ const T *Optional<T &>::operator->() const {
     return m_ptr;
 }
 
-} // namespace jamf
+} // namespace codespy

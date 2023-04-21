@@ -1,14 +1,15 @@
 #pragma once
 
-#include <container/Array.hh>
-#include <support/Span.hh>
-#include <support/StringView.hh>
-#include <support/Utility.hh>
+#include <codespy/container/Array.hh>
+#include <codespy/support/Span.hh>
+#include <codespy/support/StringView.hh>
+#include <codespy/support/Utility.hh>
 
-#include <stddef.h>
-#include <stdint.h>
+#include <cstddef>
+#include <cstdint>
+#include <utility>
 
-namespace jamf {
+namespace codespy {
 
 template <typename T>
 inline constexpr bool is_enum = __is_enum(T);
@@ -48,13 +49,13 @@ consteval StringView enum_name() {
 }
 
 template <Enum E, unsigned L, uint32_t... Is>
-consteval auto enum_names(IntegerSequence<uint32_t, Is...>) {
+consteval auto enum_names(std::integer_sequence<uint32_t, Is...>) {
     return Array<StringView, sizeof...(Is)>{{enum_name<E, static_cast<E>(Is), L>()...}};
 }
 
 template <Enum E, unsigned L>
 consteval auto enum_names() {
-    return enum_names<E, L>(make_integer_sequence<uint32_t, 128>());
+    return enum_names<E, L>(std::make_integer_sequence<uint32_t, 128>());
 }
 
 template <unsigned L = 2, Enum E>
@@ -62,4 +63,4 @@ constexpr auto enum_name(E value) {
     return enum_names<E, L>()[uint32_t(value)];
 }
 
-} // namespace jamf
+} // namespace codespy

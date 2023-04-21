@@ -1,8 +1,8 @@
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
 
-namespace jamf {
+namespace codespy {
 
 template <typename>
 inline constexpr bool is_integral = false;
@@ -11,21 +11,21 @@ inline constexpr bool is_integral<bool> = true;
 template <>
 inline constexpr bool is_integral<char> = true;
 template <>
-inline constexpr bool is_integral<int8_t> = true;
+inline constexpr bool is_integral<std::int8_t> = true;
 template <>
-inline constexpr bool is_integral<int16_t> = true;
+inline constexpr bool is_integral<std::int16_t> = true;
 template <>
-inline constexpr bool is_integral<int32_t> = true;
+inline constexpr bool is_integral<std::int32_t> = true;
 template <>
-inline constexpr bool is_integral<int64_t> = true;
+inline constexpr bool is_integral<std::int64_t> = true;
 template <>
-inline constexpr bool is_integral<uint8_t> = true;
+inline constexpr bool is_integral<std::uint8_t> = true;
 template <>
-inline constexpr bool is_integral<uint16_t> = true;
+inline constexpr bool is_integral<std::uint16_t> = true;
 template <>
-inline constexpr bool is_integral<uint32_t> = true;
+inline constexpr bool is_integral<std::uint32_t> = true;
 template <>
-inline constexpr bool is_integral<uint64_t> = true;
+inline constexpr bool is_integral<std::uint64_t> = true;
 
 template <typename T>
 inline constexpr bool is_signed = T(-1) < T(0);
@@ -39,4 +39,4 @@ concept SignedIntegral = is_integral<T> && is_signed<T>;
 template <typename T>
 concept UnsignedIntegral = is_integral<T> && !is_signed<T>;
 
-} // namespace jamf
+} // namespace codespy

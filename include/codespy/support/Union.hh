@@ -1,19 +1,20 @@
 #pragma once
 
-#include <container/Array.hh>
-#include <support/Utility.hh>
+#include <codespy/container/Array.hh>
+#include <codespy/support/Utility.hh>
 
-#include <assert.h>
+#include <cassert>
 #include <new>
+#include <utility>
 
 // NOLINTBEGIN
-namespace jamf {
+namespace codespy {
 
 template <typename... Ts>
 struct Union {
-    static consteval size_t largest_type_size() {
-        size_t largest = 0;
-        for (size_t size : Array{sizeof(Ts)...}) {
+    static consteval std::size_t largest_type_size() {
+        std::size_t largest = 0;
+        for (std::size_t size : Array{sizeof(Ts)...}) {
             if (size > largest) {
                 largest = size;
             }
@@ -30,7 +31,7 @@ struct Union {
     }
     template <ContainsType<Ts...> T>
     Union(T &&value) {
-        set(move(value));
+        set(std::move(value));
     }
     ~Union() = default;
 
@@ -43,7 +44,7 @@ struct Union {
     }
     template <ContainsType<Ts...> T>
     void set(T &&value) {
-        new (data) T(move(value));
+        new (data) T(std::move(value));
     }
     template <ContainsType<Ts...> T>
     void release() {
@@ -60,5 +61,5 @@ struct Union {
     }
 };
 
-} // namespace jamf
+} // namespace codespy
 // NOLINTEND

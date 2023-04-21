@@ -1,19 +1,18 @@
 #pragma once
 
-#include <container/Array.hh>
-#include <support/Integral.hh> // IWYU pragma: keep
-#include <support/Integral.hh>
-#include <support/Result.hh>
-#include <support/Span.hh>
-#include <support/StreamError.hh>
-#include <support/String.hh> // IWYU pragma: keep
-#include <support/StringView.hh>
-#include <support/UniquePtr.hh>
+#include <codespy/container/Array.hh>
+#include <codespy/support/Integral.hh>
+#include <codespy/support/Result.hh>
+#include <codespy/support/Span.hh>
+#include <codespy/support/StreamError.hh>
+#include <codespy/support/String.hh>
+#include <codespy/support/StringView.hh>
+#include <codespy/support/UniquePtr.hh>
 
-#include <stdint.h>
+#include <cstdint>
 #include <sys/types.h>
 
-namespace jamf {
+namespace codespy {
 
 class StreamOffset {
     ssize_t m_value;
@@ -62,18 +61,17 @@ struct Stream {
 
     Result<String, StreamError> read_string();
     Result<void, StreamError> write_string(StringView string);
-    Result<void, StreamError> write_c_string(StringView string);
 };
 
 template <Integral T>
 Result<T, StreamError> Stream::read_be() {
-    Array<uint8_t, sizeof(T)> bytes;
-    if (JAMF_TRY(read(bytes.span())) != sizeof(T)) {
+    Array<std::uint8_t, sizeof(T)> bytes;
+    if (CODESPY_TRY(read(bytes.span())) != sizeof(T)) {
         return StreamError::Truncated;
     }
 
     T value = 0;
-    for (uint32_t i = 0; i < sizeof(T); i++) {
+    for (std::uint32_t i = 0; i < sizeof(T); i++) {
         const auto shift = (sizeof(T) - i - 1) * T(8);
         value |= static_cast<T>(bytes[i]) << shift;
     }
@@ -82,12 +80,12 @@ Result<T, StreamError> Stream::read_be() {
 
 template <Integral T>
 Result<void, StreamError> Stream::write_be(T value) {
-    Array<uint8_t, sizeof(T)> bytes;
-    for (uint32_t i = 0; i < sizeof(T); i++) {
+    Array<std::uint8_t, sizeof(T)> bytes;
+    for (std::uint32_t i = 0; i < sizeof(T); i++) {
         const auto shift = (sizeof(T) - i - 1) * T(8);
         bytes[i] = static_cast<uint8_t>((value >> shift) & 0xffu);
     }
-    JAMF_TRY(write(bytes.span()));
+    CODESPY_TRY(write(bytes.span()));
     return {};
 }
 
@@ -95,7 +93,7 @@ template <UnsignedIntegral T>
 Result<T, StreamError> Stream::read_varint() {
     T value = 0;
     for (T byte_count = 0; byte_count <= sizeof(T); byte_count++) {
-        uint8_t byte = JAMF_TRY(read_byte());
+        uint8_t byte = CODESPY_TRY(read_byte());
         value |= static_cast<T>(byte & 0x7fu) << (byte_count * 7u);
         if ((byte & 0x80u) == 0u) {
             break;
@@ -107,11 +105,11 @@ Result<T, StreamError> Stream::read_varint() {
 template <UnsignedIntegral T>
 Result<void, StreamError> Stream::write_varint(T value) {
     while (value >= 128) {
-        JAMF_TRY(write_byte((value & 0x7fu) | 0x80u));
+        CODESPY_TRY(write_byte((value & 0x7fu) | 0x80u));
         value >>= 7u;
     }
-    JAMF_TRY(write_byte(value & 0x7fu));
+    CODESPY_TRY(write_byte(value & 0x7fu));
     return {};
 }
 
-} // namespace jamf
+} // namespace codespy

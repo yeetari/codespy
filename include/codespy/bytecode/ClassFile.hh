@@ -1,14 +1,19 @@
 #pragma once
 
-#include <container/Vector.hh>
-#include <support/Result.hh>
-#include <support/StreamError.hh>
+#include <codespy/container/Vector.hh>
+#include <codespy/support/Result.hh>
+#include <codespy/support/StreamError.hh>
 
 #include <cstdint>
 
-namespace jamf {
+namespace codespy {
 
 struct Stream;
+
+} // namespace codespy
+
+namespace codespy::bc {
+
 struct Visitor;
 
 enum class ParseError {
@@ -20,4 +25,4 @@ enum class ParseError {
 
 Result<void, ParseError, StreamError> parse_class(Stream &stream, Visitor &visitor);
 
-} // namespace jamf
+} // namespace codespy::bc

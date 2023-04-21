@@ -1,11 +1,12 @@
 #pragma once
 
-#include <support/StringView.hh>
-#include <support/Variant.hh>
+#include <codespy/support/Enum.hh>
+#include <codespy/support/StringView.hh>
+#include <codespy/support/Variant.hh>
 
 #include <cstdint>
 
-namespace jamf {
+namespace codespy::bc {
 
 enum class AccessFlags : std::uint16_t {
     Public = 1u << 0u,
@@ -142,13 +143,11 @@ enum class Opcode : std::uint8_t {
 };
 
 constexpr std::uint8_t operator-(Opcode lhs, Opcode rhs) {
-    // TODO: to_underlying
-    return static_cast<std::uint8_t>(lhs) - static_cast<std::uint8_t>(rhs);
+    return codespy::to_underlying(lhs) - codespy::to_underlying(rhs);
 }
 
 constexpr auto operator<=>(Opcode lhs, Opcode rhs) {
-    // TODO: to_underlying
-    return static_cast<std::uint8_t>(lhs) <=> static_cast<std::uint8_t>(rhs);
+    return codespy::to_underlying(lhs) <=> codespy::to_underlying(rhs);
 }
 
-} // namespace jamf
+} // namespace codespy::bc

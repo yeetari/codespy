@@ -1,6 +1,6 @@
 #pragma once
 
-namespace jamf {
+namespace codespy {
 namespace detail {
 
 template <bool B, typename T, typename F>
@@ -115,38 +115,6 @@ concept ConvertibleTo = is_convertible_to<T, U>;
 template <typename T>
 concept TriviallyCopyable = is_trivially_copyable<T>;
 
-template <typename T>
-T declval();
-
-template <typename T>
-constexpr T &&forward(remove_ref<T> &arg) {
-    return static_cast<T &&>(arg);
-}
-
-template <typename T>
-constexpr T &&forward(remove_ref<T> &&arg) {
-    return static_cast<T &&>(arg);
-}
-
-template <typename T>
-constexpr remove_ref<T> &&move(T &&arg) {
-    return static_cast<remove_ref<T> &&>(arg);
-}
-
-template <typename T, typename U = T>
-constexpr T exchange(T &obj, U &&new_value) {
-    T old_value = move(obj);
-    obj = forward<U>(new_value);
-    return old_value;
-}
-
-template <typename T>
-constexpr void swap(T &lhs, T &rhs) {
-    T tmp(move(lhs));
-    lhs = move(rhs);
-    rhs = move(tmp);
-}
-
 // NOLINTBEGIN
 template <typename T>
 struct AlignedStorage {
@@ -242,20 +210,6 @@ using unwrap_ref = typename UnrapRefWrapper<T>::type;
 template <typename T>
 using decay_unwrap = unwrap_ref<decay<T>>;
 
-template <typename F, typename... Args>
-using result_type = decltype(declval<F>()(declval<Args>()...));
-
-template <typename I, I... Is>
-struct IntegerSequence {};
-
-#if __has_builtin(__make_integer_seq)
-template <typename I, I N>
-using make_integer_sequence = __make_integer_seq<IntegerSequence, I, N>;
-#else
-template <typename I, I N>
-using make_integer_sequence = IntegerSequence<I, __integer_pack(N)...>;
-#endif
-
 inline constexpr auto &operator&=(auto &lhs, auto rhs) {
     return lhs = (lhs & rhs);
 }
@@ -274,4 +228,4 @@ inline constexpr auto &operator^=(auto &lhs, auto rhs) {
 #endif
 }
 
-} // namespace jamf
+} // namespace codespy

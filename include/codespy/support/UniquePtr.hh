@@ -1,10 +1,11 @@
 #pragma once
 
-#include <support/Utility.hh>
+#include <codespy/support/Utility.hh>
 
 #include <cassert>
+#include <utility>
 
-namespace jamf {
+namespace codespy {
 
 template <typename T>
 class [[nodiscard]] UniquePtr {
@@ -35,8 +36,8 @@ public:
 
 template <typename T>
 UniquePtr<T> &UniquePtr<T>::operator=(UniquePtr &&other) {
-    UniquePtr moved(move(other));
-    swap(m_ptr, moved.m_ptr);
+    UniquePtr moved(std::move(other));
+    std::swap(m_ptr, moved.m_ptr);
     return *this;
 }
 
@@ -48,7 +49,7 @@ void UniquePtr<T>::clear() {
 
 template <typename T>
 T *UniquePtr<T>::disown() {
-    return exchange(m_ptr, nullptr);
+    return std::exchange(m_ptr, nullptr);
 }
 
 template <typename T>
@@ -70,12 +71,12 @@ UniquePtr<T> adopt_unique(T *ptr) {
 
 template <typename T>
 UniquePtr<T> adopt_unique(T &&obj) {
-    return UniquePtr<T>(new T(move(obj)));
+    return UniquePtr<T>(new T(std::move(obj)));
 }
 
 template <typename T, typename... Args>
 UniquePtr<T> make_unique(Args &&...args) {
-    return UniquePtr<T>(new T(forward<Args>(args)...));
+    return UniquePtr<T>(new T(std::forward<Args>(args)...));
 }
 
-} // namespace jamf
+} // namespace codespy

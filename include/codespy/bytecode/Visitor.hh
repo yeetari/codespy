@@ -1,11 +1,11 @@
 #pragma once
 
-#include <bytecode/Definitions.hh>
-#include <support/StringView.hh>
+#include <codespy/bytecode/Definitions.hh>
+#include <codespy/support/StringView.hh>
 
 #include <cstdint>
 
-namespace jamf {
+namespace codespy::bc {
 
 struct Visitor {
     virtual void visit(StringView this_name, StringView super_name) = 0;
@@ -22,4 +22,4 @@ struct Visitor {
     virtual void visit_return(BaseType type) = 0;
 };
 
-} // namespace jamf
+} // namespace codespy::bc
