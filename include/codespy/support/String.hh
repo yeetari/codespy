@@ -5,6 +5,8 @@
 #include <codespy/support/Utility.hh>
 
 #include <cstddef>
+#include <functional>
+#include <string_view>
 #include <utility>
 
 namespace codespy {
@@ -22,7 +24,8 @@ public:
     String(const char *c_string) : String(copy_raw(c_string, __builtin_strlen(c_string))) {}
     String(StringView view) : String(copy_raw(view.data(), view.length())) {}
     String(const String &other) : String(copy_raw(other.m_data, other.m_length)) {}
-    String(String &&other) : m_data(std::exchange(other.m_data, nullptr)), m_length(std::exchange(other.m_length, 0u)) {}
+    String(String &&other)
+        : m_data(std::exchange(other.m_data, nullptr)), m_length(std::exchange(other.m_length, 0u)) {}
     ~String();
 
     String &operator=(const String &) = delete;
@@ -47,3 +50,14 @@ public:
 };
 
 } // namespace codespy
+
+namespace std {
+
+template <>
+struct hash<codespy::String> {
+    std::size_t operator()(const codespy::String &string) const {
+        return hash<std::string_view>{}(std::string_view{string.data(), string.length()});
+    }
+};
+
+} // namespace std

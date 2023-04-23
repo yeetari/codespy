@@ -10,6 +10,9 @@ namespace codespy::bc {
 
 enum class AccessFlags : std::uint16_t {
     Public = 1u << 0u,
+    Private = 1u << 1u,
+    Protected = 1u << 2u,
+    Static = 1u << 3u,
 
     /// No subclasses allowed.
     Final = 1u << 4u,
@@ -60,6 +63,7 @@ enum class ConstantKind : std::uint8_t {
 
 enum class InvokeKind {
     Special,
+    Static,
     Virtual,
 };
 
@@ -141,6 +145,14 @@ enum class Opcode : std::uint8_t {
     INVOKE_STATIC = 184,
     INVOKE_INTERFACE = 185,
 };
+
+inline constexpr AccessFlags operator&(AccessFlags lhs, AccessFlags rhs) {
+    return static_cast<AccessFlags>(codespy::to_underlying(lhs) & codespy::to_underlying(rhs));
+}
+
+inline constexpr AccessFlags operator|(AccessFlags lhs, AccessFlags rhs) {
+    return static_cast<AccessFlags>(codespy::to_underlying(lhs) | codespy::to_underlying(rhs));
+}
 
 constexpr std::uint8_t operator-(Opcode lhs, Opcode rhs) {
     return codespy::to_underlying(lhs) - codespy::to_underlying(rhs);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 namespace codespy {
 namespace detail {
 
@@ -218,6 +220,11 @@ inline constexpr auto &operator|=(auto &lhs, auto rhs) {
 }
 inline constexpr auto &operator^=(auto &lhs, auto rhs) {
     return lhs = (lhs ^ rhs);
+}
+
+inline std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
+    lhs ^= rhs + 0x9e3779b9 + (lhs << 6u) + (lhs >> 2u);
+    return lhs;
 }
 
 [[noreturn]] inline void unreachable() {

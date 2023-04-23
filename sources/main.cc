@@ -1,6 +1,8 @@
 #include <codespy/bytecode/ClassFile.hh>
+#include <codespy/bytecode/Frontend.hh>
 #include <codespy/bytecode/Visitor.hh>
 #include <codespy/container/Vector.hh>
+#include <codespy/ir/Dumper.hh>
 #include <codespy/support/Enum.hh>
 #include <codespy/support/Print.hh>
 #include <codespy/support/SpanStream.hh>
@@ -20,7 +22,7 @@ struct DumpVisitor : public bc::Visitor {
         codespy::println("field {} {}", name, descriptor);
     }
 
-    void visit_method(StringView name, StringView descriptor) override {
+    void visit_method(bc::AccessFlags, StringView name, StringView descriptor) override {
         codespy::println("method {} {}", name, descriptor);
     }
 
@@ -75,9 +77,20 @@ int main(int, char **argv) {
         if (name.ends_with(".class")) {
             std::size_t size;
             void *data = mz_zip_reader_extract_to_heap(&zip_archive, i, &size, 0);
-            SpanStream stream(codespy::make_span(static_cast<std::uint8_t *>(data), size));
-            DumpVisitor visitor;
-            CODESPY_EXPECT(bc::parse_class(stream, visitor));
+            {
+                SpanStream stream(codespy::make_span(static_cast<std::uint8_t *>(data), size));
+                DumpVisitor visitor;
+                CODESPY_EXPECT(bc::parse_class(stream, visitor));
+            }
+            codespy::print('\n');
+            {
+                SpanStream stream(codespy::make_span(static_cast<std::uint8_t *>(data), size));
+                bc::Frontend frontend;
+                CODESPY_EXPECT(bc::parse_class(stream, frontend));
+                for (auto *function : frontend.functions()) {
+                    ir::dump_code(function);
+                }
+            }
         }
     }
     mz_zip_reader_end(&zip_archive);

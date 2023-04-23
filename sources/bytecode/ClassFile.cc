@@ -346,10 +346,10 @@ Result<void, ParseError, StreamError> parse_class(Stream &stream, Visitor &visit
 
     auto method_count = CODESPY_TRY(stream.read_be<std::uint16_t>());
     while (method_count-- > 0) {
-        CODESPY_TRY(stream.read_be<std::uint16_t>()); // access flags
+        const auto access_flags = static_cast<AccessFlags>(CODESPY_TRY(stream.read_be<std::uint16_t>()));
         const auto name = constant_pool.read_utf(CODESPY_TRY(stream.read_be<std::uint16_t>()));
         const auto descriptor = constant_pool.read_utf(CODESPY_TRY(stream.read_be<std::uint16_t>()));
-        visitor.visit_method(name, descriptor);
+        visitor.visit_method(access_flags, name, descriptor);
 
         CODESPY_TRY(
             iterate_attributes(stream, constant_pool, [&](StringView name) -> Result<bool, ParseError, StreamError> {

@@ -10,7 +10,7 @@ namespace codespy::bc {
 struct Visitor {
     virtual void visit(StringView this_name, StringView super_name) = 0;
     virtual void visit_field(StringView name, StringView descriptor) = 0;
-    virtual void visit_method(StringView name, StringView descriptor) = 0;
+    virtual void visit_method(AccessFlags access_flags, StringView name, StringView descriptor) = 0;
 
     virtual void visit_code(std::uint16_t max_stack, std::uint16_t max_locals) = 0;
     virtual void visit_constant(Constant constant) = 0;
