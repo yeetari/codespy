@@ -8,6 +8,7 @@ namespace codespy::ir {
 
 enum class TypeKind : std::uint8_t {
     // Primitive types
+    Any, // For Java frontend
     Label,
     Float,
     Double,

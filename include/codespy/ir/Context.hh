@@ -10,6 +10,7 @@
 namespace codespy::ir {
 
 class Context {
+    Type m_any_type{TypeKind::Any};
     Type m_label_type{TypeKind::Label};
     Type m_float_type{TypeKind::Float};
     Type m_double_type{TypeKind::Double};
@@ -23,6 +24,7 @@ class Context {
     std::unordered_map<String, UniquePtr<ConstantString>> m_string_constants;
 
 public:
+    Type *any_type() { return &m_any_type; }
     Type *label_type() { return &m_label_type; }
     Type *float_type() { return &m_float_type; }
     Type *double_type() { return &m_double_type; }

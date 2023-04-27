@@ -30,6 +30,8 @@ public:
 String type_string(Type *type) {
     // TODO: as<T> function on Type.
     switch (type->kind()) {
+    case TypeKind::Any:
+        return "any";
     case TypeKind::Float:
         return "f32";
     case TypeKind::Double:
