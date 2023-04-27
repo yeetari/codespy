@@ -24,8 +24,10 @@ class Dumper final : public Visitor {
 public:
     void run_on(Function *function);
     void visit(CallInst &) override;
+    void visit(LoadInst &) override;
     void visit(LoadFieldInst &) override;
     void visit(ReturnInst &) override;
+    void visit(StoreInst &) override;
 };
 
 String type_string(Type *type) {
@@ -125,6 +127,10 @@ void Dumper::visit(CallInst &call) {
     codespy::print(")");
 }
 
+void Dumper::visit(LoadInst &load) {
+    codespy::print("load {}", value_string(load.pointer()));
+}
+
 void Dumper::visit(LoadFieldInst &load_field) {
     codespy::print("load_field {} {}.{}", type_string(load_field.type()), load_field.owner(), load_field.name());
     if (load_field.has_object_ref()) {
@@ -134,6 +140,10 @@ void Dumper::visit(LoadFieldInst &load_field) {
 
 void Dumper::visit(ReturnInst &) {
     codespy::print("ret void");
+}
+
+void Dumper::visit(StoreInst &store) {
+    codespy::print("store {}, {}", value_string(store.pointer()), value_string(store.value()));
 }
 
 } // namespace

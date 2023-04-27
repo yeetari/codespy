@@ -23,11 +23,17 @@ void Instruction::accept(Visitor &visitor) {
     case Opcode::Call:
         visitor.visit(static_cast<CallInst &>(*this));
         break;
+    case Opcode::Load:
+        visitor.visit(static_cast<LoadInst &>(*this));
+        break;
     case Opcode::LoadField:
         visitor.visit(static_cast<LoadFieldInst &>(*this));
         break;
     case Opcode::Return:
         visitor.visit(static_cast<ReturnInst &>(*this));
+        break;
+    case Opcode::Store:
+        visitor.visit(static_cast<StoreInst &>(*this));
         break;
     default:
         assert(false);

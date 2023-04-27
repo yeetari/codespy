@@ -12,8 +12,10 @@ class Visitor;
 
 enum class Opcode : std::uint8_t {
     Call,
+    Load,
     Phi,
     Return,
+    Store,
 
     // Java specific
     LoadField,

@@ -28,6 +28,10 @@ Vector<Value *> CallInst::arguments() const {
     return ret;
 }
 
+LoadInst::LoadInst(BasicBlock *parent, Type *type, Value *pointer) : Instruction(k_opcode, parent, type, 1) {
+    set_operand(0, pointer);
+}
+
 LoadFieldInst::LoadFieldInst(BasicBlock *parent, Type *type, String owner, String name, Value *object_ref)
     : Instruction(k_opcode, parent, type, object_ref != nullptr ? 1 : 0), m_owner(std::move(owner)),
       m_name(std::move(name)) {
@@ -46,5 +50,11 @@ PhiInst::PhiInst(BasicBlock *parent, Span<std::pair<BasicBlock *, Value *>> inco
 }
 
 ReturnInst::ReturnInst(BasicBlock *parent) : Instruction(k_opcode, parent, parent->context().void_type(), 0) {}
+
+StoreInst::StoreInst(BasicBlock *parent, Value *pointer, Value *value)
+    : Instruction(k_opcode, parent, parent->context().void_type(), 2) {
+    set_operand(0, pointer);
+    set_operand(1, value);
+}
 
 } // namespace codespy::ir

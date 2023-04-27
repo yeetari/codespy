@@ -40,6 +40,15 @@ public:
     bool is_invoke_special() const { return m_is_invoke_special; }
 };
 
+class LoadInst : public Instruction {
+public:
+    static constexpr auto k_opcode = Opcode::Load;
+
+    LoadInst(BasicBlock *parent, Type *type, Value *pointer);
+
+    Value *pointer() const { return operand(0); }
+};
+
 class LoadFieldInst : public Instruction {
     String m_owner;
     String m_name;
@@ -67,6 +76,16 @@ public:
     static constexpr auto k_opcode = Opcode::Return;
 
     explicit ReturnInst(BasicBlock *parent);
+};
+
+class StoreInst : public Instruction {
+public:
+    static constexpr auto k_opcode = Opcode::Store;
+
+    StoreInst(BasicBlock *parent, Value *pointer, Value *value);
+
+    Value *pointer() const { return operand(0); }
+    Value *value() const { return operand(1); }
 };
 
 } // namespace codespy::ir
