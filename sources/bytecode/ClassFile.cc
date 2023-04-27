@@ -93,8 +93,8 @@ Result<void, ParseError, StreamError> parse_code(Stream &stream, Visitor &visito
         const auto opcode = static_cast<Opcode>(CODESPY_TRY(stream.read_byte()));
 
         if (opcode >= Opcode::ICONST_M1 && opcode <= Opcode::ICONST_5) {
-            const auto value = static_cast<int>(opcode - Opcode::ICONST_M1) - 1;
-            assert(false);
+            const auto value = static_cast<std::int32_t>(opcode - Opcode::ICONST_M1) - 1;
+            visitor.visit_constant(value);
             continue;
         }
 
@@ -193,19 +193,26 @@ Result<void, ParseError, StreamError> parse_code(Stream &stream, Visitor &visito
         case Opcode::ACONST_NULL:
             break;
         case Opcode::LCONST_0:
-            break;
+            visitor.visit_constant(std::int64_t(0));
+            continue;
         case Opcode::LCONST_1:
-            break;
+            visitor.visit_constant(std::int64_t(1));
+            continue;
         case Opcode::FCONST_0:
-            break;
+            visitor.visit_constant(0.0f);
+            continue;
         case Opcode::FCONST_1:
-            break;
+            visitor.visit_constant(1.0f);
+            continue;
         case Opcode::FCONST_2:
-            break;
+            visitor.visit_constant(2.0f);
+            continue;
         case Opcode::DCONST_0:
-            break;
+            visitor.visit_constant(0.0);
+            continue;
         case Opcode::DCONST_1:
-            break;
+            visitor.visit_constant(1.0);
+            continue;
         case Opcode::BIPUSH:
             visitor.visit_constant(static_cast<std::int32_t>(static_cast<std::int8_t>(CODESPY_TRY(stream.read_byte()))));
             continue;
