@@ -41,8 +41,14 @@ ir::Type *Frontend::parse_type(StringView descriptor, std::size_t *length) {
         return m_context->void_type();
     case 'Z':
         return m_context->int_type(1);
-    case '[':
-        return m_context->array_type(parse_type(descriptor.substr(1)));
+    case '[': {
+        std::size_t sub_length = 0;
+        auto *element_type = parse_type(descriptor.substr(1), &sub_length);
+        if (length != nullptr) {
+            *length = sub_length + 1;
+        }
+        return m_context->array_type(element_type);
+    }
     case 'L': {
         StringBuilder sb;
         for (std::size_t i = 1; i < descriptor.length(); i++) {
