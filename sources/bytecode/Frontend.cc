@@ -17,6 +17,23 @@ Frontend::Frontend() {
 
 Frontend::~Frontend() = default;
 
+ir::Type *Frontend::lower_base_type(BaseType base_type) {
+    switch (base_type) {
+    case BaseType::Int:
+        return m_context->int_type(32);
+    case BaseType::Long:
+        return m_context->int_type(64);
+    case BaseType::Float:
+        return m_context->float_type();
+    case BaseType::Double:
+        return m_context->double_type();
+    case BaseType::Reference:
+        return m_context->reference_type("java/lang/Object");
+    case BaseType::Void:
+        return m_context->void_type();
+    }
+}
+
 ir::Type *Frontend::parse_type(StringView descriptor, std::size_t *length) {
     assert(!descriptor.empty());
     if (length != nullptr) {
@@ -96,6 +113,16 @@ ir::Function *Frontend::materialise_function(StringView owner, StringView name, 
     return slot;
 }
 
+ir::Value *Frontend::materialise_local(std::uint16_t index) {
+    auto *&slot = m_local_map[index];
+    if (slot == nullptr) {
+        // Use any type as we don't know what type(s) the local may hold.
+        // TODO: If SSA can be generated from the beginning (in this frontend pass), we wouldn't need to do this.
+        slot = m_function->append_local(m_context->any_type());
+    }
+    return slot;
+}
+
 void Frontend::visit(StringView this_name, StringView) {
     m_this_name = this_name;
 }
@@ -112,8 +139,9 @@ void Frontend::visit_method(AccessFlags access_flags, StringView name, StringVie
     m_block = m_function->append_block();
 }
 
-void Frontend::visit_code(std::uint16_t max_stack, std::uint16_t) {
+void Frontend::visit_code(std::uint16_t max_stack, std::uint16_t max_locals) {
     m_stack.ensure_capacity(max_stack);
+    m_local_map.reserve(max_locals);
 }
 
 void Frontend::visit_constant(Constant constant) {
@@ -128,18 +156,24 @@ void Frontend::visit_constant(Constant constant) {
     }
 }
 
-void Frontend::visit_load(BaseType, std::uint8_t local_index) {
-    const auto parameter_count = m_function->function_type()->parameter_types().size();
-    if (local_index < parameter_count) {
+void Frontend::visit_load(BaseType base_type, std::uint8_t local_index) {
+    if (local_index < m_function->parameter_count()) {
         m_stack.push(m_function->argument(local_index));
         return;
     }
-    assert(false);
+
+    ir::Type *type = lower_base_type(base_type);
+    m_stack.push(m_block->append<ir::LoadInst>(type, materialise_local(local_index)));
 }
 
-void Frontend::visit_store(BaseType, std::uint8_t) {
-    m_stack.pop();
-    //    assert(false);
+void Frontend::visit_store(BaseType, std::uint8_t local_index) {
+    if (local_index < m_function->parameter_count()) {
+        // TODO: Handle assigns to arguments.
+        assert(false);
+    }
+
+    ir::Value *value = m_stack.take_last();
+    m_block->append<ir::StoreInst>(materialise_local(local_index), value);
 }
 
 void Frontend::visit_cast(BaseType, BaseType) {

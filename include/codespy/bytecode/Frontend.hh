@@ -27,10 +27,13 @@ class Frontend : public Visitor {
     ir::BasicBlock *m_block;
     Vector<ir::Value *, std::uint16_t> m_stack;
     std::unordered_map<String, ir::Function *> m_function_map;
+    std::unordered_map<std::uint16_t, ir::Value *> m_local_map;
 
+    ir::Type *lower_base_type(BaseType base_type);
     ir::Type *parse_type(StringView descriptor, std::size_t *length = nullptr);
     ir::FunctionType *parse_function_type(StringView descriptor, ir::Type *this_type);
     ir::Function *materialise_function(StringView owner, StringView name, StringView descriptor, ir::Type *this_type);
+    ir::Value *materialise_local(std::uint16_t index);
 
 public:
     Frontend();
