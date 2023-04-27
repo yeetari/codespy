@@ -63,6 +63,39 @@ struct DumpVisitor : public bc::Visitor {
         codespy::println("    invoke{} {}.{}:{}", kind_string, owner, name, descriptor);
     }
 
+    void visit_stack_op(bc::StackOp stack_op) override {
+        switch (stack_op) {
+            using enum bc::StackOp;
+        case Pop:
+            codespy::println("    pop");
+            break;
+        case Pop2:
+            codespy::println("    pop2");
+            break;
+        case Dup:
+            codespy::println("    dup");
+            break;
+        case DupX1:
+            codespy::println("    dup_x1");
+            break;
+        case DupX2:
+            codespy::println("    dup_x2");
+            break;
+        case Dup2:
+            codespy::println("    dup2");
+            break;
+        case Dup2X1:
+            codespy::println("    dup2_x1");
+            break;
+        case Dup2X2:
+            codespy::println("    dup2_x2");
+            break;
+        case Swap:
+            codespy::println("    swap");
+            break;
+        }
+    }
+
     void visit_return(bc::BaseType type) override { codespy::println("    return ({})", codespy::enum_name<1>(type)); }
 };
 

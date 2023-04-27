@@ -67,6 +67,18 @@ enum class InvokeKind {
     Virtual,
 };
 
+enum class StackOp {
+    Pop,
+    Pop2,
+    Dup,
+    DupX1,
+    DupX2,
+    Dup2,
+    Dup2X1,
+    Dup2X2,
+    Swap,
+};
+
 using Constant = Variant<std::int32_t, std::int64_t, float, double, StringView>;
 
 enum class Opcode : std::uint8_t {
@@ -103,13 +115,6 @@ enum class Opcode : std::uint8_t {
 
     // Stack
     POP = 87,
-    POP2 = 88,
-    DUP = 89,
-    DUP_X1 = 90,
-    DUP_X2 = 91,
-    DUP2 = 92,
-    DUP2_X1 = 93,
-    DUP2_X2 = 94,
     SWAP = 95,
 
     // Math

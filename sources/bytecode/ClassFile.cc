@@ -189,6 +189,11 @@ Result<void, ParseError, StreamError> parse_code(Stream &stream, Visitor &visito
             continue;
         }
 
+        if (opcode >= Opcode::POP && opcode <= Opcode::SWAP) {
+            visitor.visit_stack_op(static_cast<StackOp>(opcode - Opcode::POP));
+            continue;
+        }
+
         switch (opcode) {
         case Opcode::ACONST_NULL:
             break;
@@ -227,24 +232,6 @@ Result<void, ParseError, StreamError> parse_code(Stream &stream, Visitor &visito
         case Opcode::LDC2_W:
             visitor.visit_constant(constant_pool.read_constant(CODESPY_TRY(stream.read_be<std::uint16_t>())));
             continue;
-        case Opcode::POP:
-            break;
-        case Opcode::POP2:
-            break;
-        case Opcode::DUP:
-            break;
-        case Opcode::DUP_X1:
-            break;
-        case Opcode::DUP_X2:
-            break;
-        case Opcode::DUP2:
-            break;
-        case Opcode::DUP2_X1:
-            break;
-        case Opcode::DUP2_X2:
-            break;
-        case Opcode::SWAP:
-            break;
         default:
             break;
         }

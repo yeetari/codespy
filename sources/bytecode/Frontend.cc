@@ -207,6 +207,22 @@ void Frontend::visit_invoke(InvokeKind kind, StringView owner, StringView name, 
     }
 }
 
+void Frontend::visit_stack_op(StackOp stack_op) {
+    switch (stack_op) {
+    case StackOp::Pop2:
+        m_stack.pop();
+        if (m_stack.empty()) {
+            break;
+        }
+        [[fallthrough]];
+    case StackOp::Pop:
+        m_stack.pop();
+        break;
+    default:
+        assert(false);
+    }
+}
+
 void Frontend::visit_return(BaseType type) {
     switch (type) {
     case BaseType::Void:
