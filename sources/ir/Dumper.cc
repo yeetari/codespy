@@ -16,6 +16,7 @@ namespace {
 
 class Dumper final : public Visitor {
     Function *m_function;
+    std::unordered_map<Local *, std::size_t> m_local_map;
     std::unordered_map<Value *, std::size_t> m_value_map;
 
     String value_string(Value *value);
@@ -67,6 +68,9 @@ String Dumper::value_string(Value *value) {
     if (auto *function = value->as<Function>()) {
         return codespy::format("{} @{}", type_string(function->function_type()->return_type()), function->name());
     }
+    if (auto *local = value->as<Local>()) {
+        return codespy::format("{} %l{}", type_string(local->type()), m_local_map.at(local));
+    }
     return codespy::format("{} %v{}", type_string(value->type()), m_value_map.at(value));
 }
 
@@ -87,6 +91,10 @@ void Dumper::run_on(Function *function) {
     }
 
     codespy::println(") {");
+    for (auto *local : function->locals()) {
+        codespy::println("  %l{}: {}", m_local_map.size(), type_string(local->type()));
+        m_local_map.emplace(local, m_local_map.size());
+    }
     for (auto *block : function->blocks()) {
         for (auto *inst : block->insts()) {
             codespy::print("  ");

@@ -27,6 +27,7 @@ enum class ValueKind : std::uint8_t {
     ConstantString,
     Function,
     Instruction,
+    Local,
 };
 
 template <typename T>
