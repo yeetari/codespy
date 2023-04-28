@@ -13,6 +13,7 @@ struct Visitor {
     virtual void visit_method(AccessFlags access_flags, StringView name, StringView descriptor) = 0;
 
     virtual void visit_code(std::uint16_t max_stack, std::uint16_t max_locals) = 0;
+    virtual void visit_offset(std::int32_t) {}
     virtual void visit_constant(Constant constant) = 0;
     virtual void visit_load(BaseType type, std::uint8_t local_index) = 0;
     virtual void visit_store(BaseType type, std::uint8_t local_index) = 0;

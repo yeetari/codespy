@@ -88,8 +88,12 @@ Result<void, ParseError, StreamError> parse_code(Stream &stream, Visitor &visito
     visitor.visit_code(max_stack, max_locals);
 
     const auto code_length = CODESPY_TRY(stream.read_be<std::uint32_t>());
+    const auto code_start = CODESPY_ASSUME(stream.seek(0, SeekMode::Add));
     const auto code_end = CODESPY_ASSUME(stream.seek(0, SeekMode::Add)) + code_length;
     while (CODESPY_ASSUME(stream.seek(0, SeekMode::Add)) < code_end) {
+        const auto current_offset =
+            static_cast<std::int32_t>(CODESPY_ASSUME(stream.seek(0, SeekMode::Add)) - code_start);
+        visitor.visit_offset(current_offset);
         const auto opcode = static_cast<Opcode>(CODESPY_TRY(stream.read_byte()));
 
         if (opcode >= Opcode::ICONST_M1 && opcode <= Opcode::ICONST_5) {
@@ -167,16 +171,16 @@ Result<void, ParseError, StreamError> parse_code(Stream &stream, Visitor &visito
         // if<op>
         if (opcode >= Opcode::IFEQ && opcode <= Opcode::IFLE) {
             const auto compare_op = static_cast<CompareOp>(opcode - Opcode::IFEQ);
-            const auto true_offset = CODESPY_TRY(stream.read_be<std::uint16_t>());
-            visitor.visit_if_cmp(compare_op, static_cast<std::int16_t>(true_offset), true);
+            const auto true_offset = static_cast<std::int16_t>(CODESPY_TRY(stream.read_be<std::uint16_t>()));
+            visitor.visit_if_cmp(compare_op, static_cast<std::int32_t>(true_offset) + current_offset, true);
             continue;
         }
 
         // if_icmp<op>
         if (opcode >= Opcode::IF_ICMPEQ && opcode <= Opcode::IF_ICMPLE) {
             const auto compare_op = static_cast<CompareOp>(opcode - Opcode::IF_ICMPEQ);
-            const auto true_offset = CODESPY_TRY(stream.read_be<std::uint16_t>());
-            visitor.visit_if_cmp(compare_op, static_cast<std::int16_t>(true_offset), false);
+            const auto true_offset = static_cast<std::int16_t>(CODESPY_TRY(stream.read_be<std::uint16_t>()));
+            visitor.visit_if_cmp(compare_op, static_cast<std::int32_t>(true_offset) + current_offset, false);
             continue;
         }
 
@@ -235,12 +239,13 @@ Result<void, ParseError, StreamError> parse_code(Stream &stream, Visitor &visito
             visitor.visit_constant(1.0);
             continue;
         case Opcode::BIPUSH:
-            visitor.visit_constant(static_cast<std::int32_t>(static_cast<std::int8_t>(CODESPY_TRY(stream.read_byte()))));
+            visitor.visit_constant(
+                static_cast<std::int32_t>(static_cast<std::int8_t>(CODESPY_TRY(stream.read_byte()))));
             continue;
         case Opcode::SIPUSH:
             visitor.visit_constant(
                 static_cast<std::int32_t>(static_cast<std::int16_t>(CODESPY_TRY(stream.read_be<std::uint16_t>()))));
-            continue ;
+            continue;
         case Opcode::LDC:
             visitor.visit_constant(constant_pool.read_constant(CODESPY_TRY(stream.read_byte())));
             continue;
