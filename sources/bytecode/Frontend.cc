@@ -223,6 +223,10 @@ void Frontend::visit_stack_op(StackOp stack_op) {
     }
 }
 
+void Frontend::visit_if_cmp(CompareOp, std::int32_t, bool) {
+    assert(false);
+}
+
 void Frontend::visit_return(BaseType type) {
     switch (type) {
     case BaseType::Void:

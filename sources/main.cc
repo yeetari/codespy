@@ -96,6 +96,34 @@ struct DumpVisitor : public bc::Visitor {
         }
     }
 
+    void visit_if_cmp(bc::CompareOp compare_op, std::int32_t true_offset, bool with_zero) override {
+        codespy::print("    if");
+        if (!with_zero) {
+            codespy::print("_icmp");
+        }
+        switch (compare_op) {
+            using enum bc::CompareOp;
+        case Equal:
+            codespy::println("eq {}", true_offset);
+            break;
+        case NotEqual:
+            codespy::println("ne {}", true_offset);
+            break;
+        case LessThan:
+            codespy::println("lt {}", true_offset);
+            break;
+        case GreaterEqual:
+            codespy::println("ge {}", true_offset);
+            break;
+        case GreaterThan:
+            codespy::println("gt {}", true_offset);
+            break;
+        case LessEqual:
+            codespy::println("le {}", true_offset);
+            break;
+        }
+    }
+
     void visit_return(bc::BaseType type) override { codespy::println("    return ({})", codespy::enum_name<1>(type)); }
 };
 

@@ -164,6 +164,22 @@ Result<void, ParseError, StreamError> parse_code(Stream &stream, Visitor &visito
             continue;
         }
 
+        // if<op>
+        if (opcode >= Opcode::IFEQ && opcode <= Opcode::IFLE) {
+            const auto compare_op = static_cast<CompareOp>(opcode - Opcode::IFEQ);
+            const auto true_offset = CODESPY_TRY(stream.read_be<std::uint16_t>());
+            visitor.visit_if_cmp(compare_op, static_cast<std::int16_t>(true_offset), true);
+            continue;
+        }
+
+        // if_icmp<op>
+        if (opcode >= Opcode::IF_ICMPEQ && opcode <= Opcode::IF_ICMPLE) {
+            const auto compare_op = static_cast<CompareOp>(opcode - Opcode::IF_ICMPEQ);
+            const auto true_offset = CODESPY_TRY(stream.read_be<std::uint16_t>());
+            visitor.visit_if_cmp(compare_op, static_cast<std::int16_t>(true_offset), false);
+            continue;
+        }
+
         // <x>return
         if (opcode >= Opcode::IRETURN && opcode <= Opcode::RETURN) {
             visitor.visit_return(static_cast<BaseType>(opcode - Opcode::IRETURN));

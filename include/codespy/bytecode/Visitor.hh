@@ -20,6 +20,7 @@ struct Visitor {
     virtual void visit_get_field(StringView owner, StringView name, StringView descriptor, bool instance) = 0;
     virtual void visit_invoke(InvokeKind kind, StringView owner, StringView name, StringView descriptor) = 0;
     virtual void visit_stack_op(StackOp stack_op) = 0;
+    virtual void visit_if_cmp(CompareOp compare_op, std::int32_t true_offset, bool with_zero) = 0;
     virtual void visit_return(BaseType type) = 0;
 };
 

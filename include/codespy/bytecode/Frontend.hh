@@ -56,6 +56,7 @@ public:
     void visit_get_field(StringView owner, StringView name, StringView descriptor, bool instance) override;
     void visit_invoke(InvokeKind kind, StringView owner, StringView name, StringView descriptor) override;
     void visit_stack_op(StackOp stack_op) override;
+    void visit_if_cmp(CompareOp compare_op, std::int32_t true_offset, bool with_zero) override;
     void visit_return(BaseType type) override;
 
     Vector<ir::Function *> functions();

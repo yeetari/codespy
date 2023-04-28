@@ -79,6 +79,15 @@ enum class StackOp {
     Swap,
 };
 
+enum class CompareOp {
+    Equal,
+    NotEqual,
+    LessThan,
+    GreaterEqual,
+    GreaterThan,
+    LessEqual,
+};
+
 using Constant = Variant<std::int32_t, std::int64_t, float, double, StringView>;
 
 enum class Opcode : std::uint8_t {
@@ -135,6 +144,10 @@ enum class Opcode : std::uint8_t {
     I2S = 147,
 
     // Comparisons
+    IFEQ = 153,
+    IFLE = 158,
+    IF_ICMPEQ = 159,
+    IF_ICMPLE = 164,
 
     // Control
     IRETURN = 172,
