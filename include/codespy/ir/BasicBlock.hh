@@ -33,6 +33,7 @@ public:
     Inst *append(Args &&...args);
     iterator remove(Instruction *inst);
 
+    bool has_terminator() const;
     Context &context() const { return m_context; }
     const List<Instruction> &insts() { return m_insts; }
 };

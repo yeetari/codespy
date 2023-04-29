@@ -113,6 +113,16 @@ ir::Function *Frontend::materialise_function(StringView owner, StringView name, 
     return slot;
 }
 
+ir::BasicBlock *Frontend::materialise_block(std::int32_t offset) {
+    auto &slot = m_block_map.at(offset);
+    if (slot.block == nullptr) {
+        slot.block = m_function->append_block();
+        slot.entry_stack.ensure_size(m_stack.size());
+        std::memcpy(slot.entry_stack.data(), m_stack.data(), m_stack.size_bytes());
+    }
+    return slot.block;
+}
+
 ir::Value *Frontend::materialise_local(std::uint16_t index) {
     auto *&slot = m_local_map[index];
     if (slot == nullptr) {
@@ -135,13 +145,30 @@ void Frontend::visit_method(AccessFlags access_flags, StringView name, StringVie
         this_type = m_context->reference_type(m_this_name);
     }
     m_function = materialise_function(m_this_name, name, descriptor, this_type);
-
-    m_block = m_function->append_block();
 }
 
 void Frontend::visit_code(std::uint16_t max_stack, std::uint16_t max_locals) {
     m_stack.ensure_capacity(max_stack);
     m_local_map.reserve(max_locals);
+
+    // Create entry block.
+    m_block = m_function->append_block();
+    m_block_map.emplace(0, BlockInfo{m_block, {}});
+}
+
+void Frontend::visit_jump_target(std::int32_t offset) {
+    m_block_map[offset];
+}
+
+void Frontend::visit_offset(std::int32_t offset) {
+    // Check whether this is a jump target and create an immediate jump if needed.
+    if (offset != 0 && m_block_map.contains(offset)) {
+        auto *target = materialise_block(offset);
+        if (!m_block->has_terminator()) {
+            m_block->append<ir::BranchInst>(target);
+        }
+        m_block = target;
+    }
 }
 
 void Frontend::visit_constant(Constant constant) {
@@ -207,6 +234,30 @@ void Frontend::visit_invoke(InvokeKind kind, StringView owner, StringView name, 
     }
 }
 
+static ir::BinaryOp lower_binary_math_op(MathOp math_op) {
+    switch (math_op) {
+    case MathOp::Add:
+        return ir::BinaryOp::Add;
+    case MathOp::Sub:
+        return ir::BinaryOp::Sub;
+    case MathOp::Mul:
+        return ir::BinaryOp::Mul;
+    case MathOp::Div:
+        return ir::BinaryOp::Div;
+    case MathOp::Rem:
+        return ir::BinaryOp::Rem;
+    default:
+        codespy::unreachable();
+    }
+}
+
+void Frontend::visit_math_op(BaseType base_type, MathOp math_op) {
+    // Use base_type in case one or both of lhs and rhs is any type.
+    ir::Value *rhs = m_stack.take_last();
+    ir::Value *lhs = m_stack.take_last();
+    m_stack.push(m_block->append<ir::BinaryInst>(lower_base_type(base_type), lower_binary_math_op(math_op), lhs, rhs));
+}
+
 void Frontend::visit_stack_op(StackOp stack_op) {
     switch (stack_op) {
     case StackOp::Pop2:
@@ -223,8 +274,54 @@ void Frontend::visit_stack_op(StackOp stack_op) {
     }
 }
 
-void Frontend::visit_if_cmp(CompareOp, std::int32_t, bool) {
-    assert(false);
+void Frontend::visit_iinc(std::uint8_t local_index, std::int32_t increment) {
+    auto *local = m_local_map.at(local_index);
+    auto *type = m_context->int_type(32);
+    auto *value = m_block->append<ir::LoadInst>(type, local);
+    auto *constant = m_context->constant_int(type, increment);
+    auto *new_value = m_block->append<ir::BinaryInst>(type, ir::BinaryOp::Add, value, constant);
+    m_block->append<ir::StoreInst>(local, new_value);
+}
+
+void Frontend::visit_goto(std::int32_t offset) {
+    m_block->append<ir::BranchInst>(materialise_block(offset));
+}
+
+static ir::CompareOp lower_compare_op(CompareOp compare_op) {
+    switch (compare_op) {
+    case CompareOp::Equal:
+        return ir::CompareOp::Equal;
+    case CompareOp::NotEqual:
+        return ir::CompareOp::NotEqual;
+    case CompareOp::LessThan:
+        return ir::CompareOp::LessThan;
+    case CompareOp::GreaterEqual:
+        return ir::CompareOp::GreaterEqual;
+    case CompareOp::GreaterThan:
+        return ir::CompareOp::GreaterThan;
+    case CompareOp::LessEqual:
+        return ir::CompareOp::LessEqual;
+    default:
+        codespy::unreachable();
+    }
+}
+
+void Frontend::visit_if_compare(CompareOp compare_op, std::int32_t true_offset, bool with_zero) {
+    ir::Value *rhs = nullptr;
+    if (!with_zero) {
+        rhs = m_stack.take_last();
+    }
+    ir::Value *lhs = m_stack.take_last();
+    if (rhs == nullptr) {
+        assert(lhs->type()->kind() == ir::TypeKind::Integer);
+        rhs = m_context->constant_int(static_cast<ir::IntType *>(lhs->type()), 0);
+    }
+
+    auto *false_target = m_function->append_block();
+    auto *true_target = materialise_block(true_offset);
+    auto *compare = m_block->append<ir::CompareInst>(lower_compare_op(compare_op), lhs, rhs);
+    m_block->append<ir::BranchInst>(true_target, false_target, compare);
+    m_block = false_target;
 }
 
 void Frontend::visit_return(BaseType type) {

@@ -16,6 +16,7 @@ namespace {
 
 class Dumper final : public Visitor {
     Function *m_function;
+    std::unordered_map<BasicBlock *, std::size_t> m_block_map;
     std::unordered_map<Local *, std::size_t> m_local_map;
     std::unordered_map<Value *, std::size_t> m_value_map;
 
@@ -23,7 +24,10 @@ class Dumper final : public Visitor {
 
 public:
     void run_on(Function *function);
+    void visit(BinaryInst &) override;
+    void visit(BranchInst &) override;
     void visit(CallInst &) override;
+    void visit(CompareInst &) override;
     void visit(LoadInst &) override;
     void visit(LoadFieldInst &) override;
     void visit(ReturnInst &) override;
@@ -60,6 +64,12 @@ String Dumper::value_string(Value *value) {
                                });
         auto index = std::distance(m_function->arguments().begin(), it);
         return codespy::format("{} %a{}", type_string(argument->type()), index);
+    }
+    if (auto *block = value->as<BasicBlock>()) {
+        if (!m_block_map.contains(block)) {
+            m_block_map.emplace(block, m_block_map.size());
+        }
+        return codespy::format("L{}", m_block_map.at(block));
     }
     if (auto *constant = value->as<ConstantInt>()) {
         return codespy::format("{} ${}", type_string(constant->type()), constant->value());
@@ -98,8 +108,10 @@ void Dumper::run_on(Function *function) {
         m_local_map.emplace(local, m_local_map.size());
     }
     for (auto *block : function->blocks()) {
+        codespy::print("  {}", value_string(block));
+        codespy::println(" {");
         for (auto *inst : block->insts()) {
-            codespy::print("  ");
+            codespy::print("    ");
             if (inst->type() != function->context().void_type()) {
                 codespy::print("%v{} = ", m_value_map.size());
                 m_value_map.emplace(inst, m_value_map.size());
@@ -107,8 +119,39 @@ void Dumper::run_on(Function *function) {
             inst->accept(*this);
             codespy::print('\n');
         }
+        codespy::println("  }");
     }
     codespy::println("}");
+}
+
+void Dumper::visit(BinaryInst &binary) {
+    switch (binary.op()) {
+    case BinaryOp::Add:
+        codespy::print("add ");
+        break;
+    case BinaryOp::Sub:
+        codespy::print("sub ");
+        break;
+    case BinaryOp::Mul:
+        codespy::print("mul ");
+        break;
+    case BinaryOp::Div:
+        codespy::print("div ");
+        break;
+    case BinaryOp::Rem:
+        codespy::print("rem ");
+        break;
+    }
+    codespy::print("{}, {}", value_string(binary.lhs()), value_string(binary.rhs()));
+}
+
+void Dumper::visit(BranchInst &branch) {
+    if (branch.is_conditional()) {
+        codespy::print("br {}, {}, {}", value_string(branch.condition()), value_string(branch.true_target()),
+                         value_string(branch.false_target()));
+    } else {
+        codespy::print("br {}", value_string(branch.target()));
+    }
 }
 
 void Dumper::visit(CallInst &call) {
@@ -125,6 +168,30 @@ void Dumper::visit(CallInst &call) {
         codespy::print("{}", value_string(argument));
     }
     codespy::print(")");
+}
+
+void Dumper::visit(CompareInst &compare) {
+    switch (compare.op()) {
+    case CompareOp::Equal:
+        codespy::print("cmp_eq ");
+        break;
+    case CompareOp::NotEqual:
+        codespy::print("cmp_ne ");
+        break;
+    case CompareOp::LessThan:
+        codespy::print("cmp_lt ");
+        break;
+    case CompareOp::GreaterThan:
+        codespy::print("cmp_gt ");
+        break;
+    case CompareOp::LessEqual:
+        codespy::print("cmp_le ");
+        break;
+    case CompareOp::GreaterEqual:
+        codespy::print("cmp_ge ");
+        break;
+    }
+    codespy::print("{}, {}", value_string(compare.lhs()), value_string(compare.rhs()));
 }
 
 void Dumper::visit(LoadInst &load) {

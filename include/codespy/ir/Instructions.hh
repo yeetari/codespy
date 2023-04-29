@@ -11,19 +11,42 @@ namespace codespy::ir {
 
 class Function;
 
-// enum class BinaryOp {
-//
-// };
-//
-// class BinaryInst : public Instruction {
-//     const BinaryOp m_op;
-//     Value *m_lhs;
-//     Value *m_rhs;
-// };
+enum class BinaryOp {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Rem,
+};
 
-// class BranchInst : public Instruction {
-//     BasicBlock *m_target;
-// };
+class BinaryInst : public Instruction {
+    const BinaryOp m_op;
+
+public:
+    static constexpr auto k_opcode = Opcode::Binary;
+
+    BinaryInst(BasicBlock *parent, Type *type, BinaryOp op, Value *lhs, Value *rhs);
+
+    BinaryOp op() const { return m_op; }
+    Value *lhs() const { return operand(0); }
+    Value *rhs() const { return operand(1); }
+};
+
+class BranchInst : public Instruction {
+    const bool m_is_conditional;
+
+public:
+    static constexpr auto k_opcode = Opcode::Branch;
+
+    BranchInst(BasicBlock *parent, BasicBlock *target);
+    BranchInst(BasicBlock *parent, BasicBlock *true_target, BasicBlock *false_target, Value *condition);
+
+    bool is_conditional() const { return m_is_conditional; }
+    BasicBlock *target() const;
+    BasicBlock *true_target() const;
+    BasicBlock *false_target() const;
+    Value *condition() const { return operand(2); }
+};
 
 class CallInst : public Instruction {
     bool m_is_invoke_special;
@@ -38,6 +61,28 @@ public:
     Function *callee() const;
     Vector<Value *> arguments() const;
     bool is_invoke_special() const { return m_is_invoke_special; }
+};
+
+enum class CompareOp {
+    Equal,
+    NotEqual,
+    LessThan,
+    GreaterThan,
+    LessEqual,
+    GreaterEqual,
+};
+
+class CompareInst : public Instruction {
+    const CompareOp m_op;
+
+public:
+    static constexpr auto k_opcode = Opcode::Compare;
+
+    CompareInst(BasicBlock *parent, CompareOp op, Value *lhs, Value *rhs);
+
+    CompareOp op() const { return m_op; }
+    Value *lhs() const { return operand(0); }
+    Value *rhs() const { return operand(1); }
 };
 
 class LoadInst : public Instruction {

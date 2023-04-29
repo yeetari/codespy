@@ -6,6 +6,36 @@
 
 namespace codespy::ir {
 
+BinaryInst::BinaryInst(BasicBlock *parent, Type *type, BinaryOp op, Value *lhs, Value *rhs)
+    : Instruction(k_opcode, parent, type, 2), m_op(op) {
+    set_operand(0, lhs);
+    set_operand(1, rhs);
+}
+
+BranchInst::BranchInst(BasicBlock *parent, BasicBlock *target)
+    : Instruction(k_opcode, parent, parent->context().void_type(), 1), m_is_conditional(false) {
+    set_operand(0, target);
+}
+
+BranchInst::BranchInst(BasicBlock *parent, BasicBlock *true_target, BasicBlock *false_target, Value *condition)
+    : Instruction(k_opcode, parent, parent->context().void_type(), 3), m_is_conditional(true) {
+    set_operand(0, true_target);
+    set_operand(1, false_target);
+    set_operand(2, condition);
+}
+
+BasicBlock *BranchInst::target() const {
+    return static_cast<BasicBlock *>(operand(0));
+}
+
+BasicBlock *BranchInst::true_target() const {
+    return static_cast<BasicBlock *>(operand(0));
+}
+
+BasicBlock *BranchInst::false_target() const {
+    return static_cast<BasicBlock *>(operand(1));
+}
+
 CallInst::CallInst(BasicBlock *parent, Function *callee, Span<Value *> arguments)
     : Instruction(k_opcode, parent, callee->function_type()->return_type(), arguments.size() + 1) {
     set_operand(0, callee);
@@ -26,6 +56,12 @@ Vector<Value *> CallInst::arguments() const {
         ret.push(operand(i + 1));
     }
     return ret;
+}
+
+CompareInst::CompareInst(BasicBlock *parent, CompareOp op, Value *lhs, Value *rhs)
+    : Instruction(k_opcode, parent, parent->context().int_type(1), 2), m_op(op) {
+    set_operand(0, lhs);
+    set_operand(1, rhs);
 }
 
 LoadInst::LoadInst(BasicBlock *parent, Type *type, Value *pointer) : Instruction(k_opcode, parent, type, 1) {

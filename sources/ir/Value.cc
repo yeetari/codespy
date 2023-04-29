@@ -1,6 +1,7 @@
 #include <codespy/ir/Value.hh>
 
 #include <codespy/ir/BasicBlock.hh>
+#include <codespy/ir/Constant.hh>
 #include <codespy/ir/Function.hh>
 #include <codespy/ir/Instruction.hh>
 #include <codespy/ir/Instructions.hh>
@@ -46,21 +47,51 @@ void Value::destroy() {
     case ValueKind::BasicBlock:
         delete as<BasicBlock>();
         break;
+    case ValueKind::ConstantInt:
+        delete as<ConstantInt>();
+        break;
+    case ValueKind::ConstantString:
+        delete as<ConstantString>();
+        break;
     case ValueKind::Function:
         delete as<Function>();
         break;
     case ValueKind::Instruction: {
         const auto *inst = as<Instruction>();
         switch (inst->opcode()) {
-        case Opcode::LoadField:
-            delete inst->as<LoadFieldInst>();
+        case Opcode::Binary:
+            delete inst->as<BinaryInst>();
+            break;
+        case Opcode::Branch:
+            delete inst->as<BranchInst>();
+            break;
+        case Opcode::Call:
+            delete inst->as<CallInst>();
+            break;
+        case Opcode::Compare:
+            delete inst->as<CompareInst>();
+            break;
+        case Opcode::Load:
+            delete inst->as<LoadInst>();
             break;
         case Opcode::Phi:
             delete inst->as<PhiInst>();
             break;
+        case Opcode::Return:
+            delete inst->as<ReturnInst>();
+            break;
+        case Opcode::Store:
+            delete inst->as<StoreInst>();
+            break;
+        case Opcode::LoadField:
+            delete inst->as<LoadFieldInst>();
+            break;
         }
         break;
     }
+    case ValueKind::Local:
+        delete as<Local>();
+        break;
     }
 }
 

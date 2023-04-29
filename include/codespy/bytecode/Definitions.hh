@@ -64,10 +64,22 @@ enum class ConstantKind : std::uint8_t {
     InvokeDynamic = 18,
 };
 
-enum class InvokeKind {
-    Special,
-    Static,
-    Virtual,
+enum class CompareOp {
+    Equal,
+    NotEqual,
+    LessThan,
+    GreaterEqual,
+    GreaterThan,
+    LessEqual,
+};
+
+enum class MathOp {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Rem,
+    Neg,
 };
 
 enum class StackOp {
@@ -82,13 +94,10 @@ enum class StackOp {
     Swap,
 };
 
-enum class CompareOp {
-    Equal,
-    NotEqual,
-    LessThan,
-    GreaterEqual,
-    GreaterThan,
-    LessEqual,
+enum class InvokeKind {
+    Special,
+    Static,
+    Virtual,
 };
 
 using Constant = Variant<std::int32_t, std::int64_t, float, double, StringView>;
@@ -136,6 +145,9 @@ enum class Opcode : std::uint8_t {
     IDIV = 108,
     IREM = 112,
     INEG = 116,
+    DNEG = 119,
+    LXOR = 131,
+    IINC = 132,
 
     // Casts
     I2L = 133,
@@ -153,6 +165,7 @@ enum class Opcode : std::uint8_t {
     IF_ICMPLE = 164,
 
     // Control
+    GOTO = 167,
     IRETURN = 172,
     RETURN = 177,
 

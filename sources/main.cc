@@ -63,6 +63,31 @@ struct DumpVisitor : public bc::Visitor {
         codespy::println("    invoke{} {}.{}:{}", kind_string, owner, name, descriptor);
     }
 
+    void visit_math_op(bc::BaseType type, bc::MathOp math_op) override {
+        switch (math_op) {
+            using enum bc::MathOp;
+        case Add:
+            codespy::print("    add");
+            break;
+        case Sub:
+            codespy::print("    sub");
+            break;
+        case Mul:
+            codespy::print("    mul");
+            break;
+        case Div:
+            codespy::print("    div");
+            break;
+        case Rem:
+            codespy::print("    rem");
+            break;
+        case Neg:
+            codespy::print("    neg");
+            break;
+        }
+        codespy::println(" ({})", codespy::enum_name<1>(type));
+    }
+
     void visit_stack_op(bc::StackOp stack_op) override {
         switch (stack_op) {
             using enum bc::StackOp;
@@ -96,7 +121,15 @@ struct DumpVisitor : public bc::Visitor {
         }
     }
 
-    void visit_if_cmp(bc::CompareOp compare_op, std::int32_t true_offset, bool with_zero) override {
+    void visit_iinc(std::uint8_t local_index, std::int32_t increment) override {
+        codespy::println("    iinc {}, {}", local_index, increment);
+    }
+
+    void visit_goto(std::int32_t offset) override {
+        codespy::println("    goto {}", offset);
+    }
+
+    void visit_if_compare(bc::CompareOp compare_op, std::int32_t true_offset, bool with_zero) override {
         codespy::print("    if");
         if (!with_zero) {
             codespy::print("_icmp");

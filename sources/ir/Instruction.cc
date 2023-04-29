@@ -20,8 +20,17 @@ void Instruction::set_operand(unsigned index, Value *value) {
 
 void Instruction::accept(Visitor &visitor) {
     switch (m_opcode) {
+    case Opcode::Binary:
+        visitor.visit(static_cast<BinaryInst &>(*this));
+        break;
+    case Opcode::Branch:
+        visitor.visit(static_cast<BranchInst &>(*this));
+        break;
     case Opcode::Call:
         visitor.visit(static_cast<CallInst &>(*this));
+        break;
+    case Opcode::Compare:
+        visitor.visit(static_cast<CompareInst &>(*this));
         break;
     case Opcode::Load:
         visitor.visit(static_cast<LoadInst &>(*this));
@@ -36,12 +45,22 @@ void Instruction::accept(Visitor &visitor) {
         visitor.visit(static_cast<StoreInst &>(*this));
         break;
     default:
-        assert(false);
+        codespy::unreachable();
     }
 }
 
 void Instruction::remove_from_parent() {
     m_parent->remove(this);
+}
+
+bool Instruction::is_terminator() const {
+    switch (m_opcode) {
+    case Opcode::Branch:
+    case Opcode::Return:
+        return true;
+    default:
+        return false;
+    }
 }
 
 } // namespace codespy::ir

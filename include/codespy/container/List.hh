@@ -29,6 +29,9 @@ public:
     iterator begin() const;
     iterator end() const;
 
+    T *first() const { return *begin(); }
+    T *last() const { return *(--end()); }
+
     bool empty() const;
     std::size_t size_slow() const;
 };

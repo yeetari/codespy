@@ -11,7 +11,10 @@ class BasicBlock;
 class Visitor;
 
 enum class Opcode : std::uint8_t {
+    Binary,
+    Branch,
     Call,
+    Compare,
     Load,
     Phi,
     Return,
@@ -57,6 +60,7 @@ public:
     template <HasOpcode T>
     bool is() const;
 
+    bool is_terminator() const;
     Opcode opcode() const { return m_opcode; }
     bool has_operands() const { return m_operands != nullptr; }
 };
