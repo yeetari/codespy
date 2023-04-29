@@ -10,7 +10,7 @@ class Value;
 class Use {
     Use **m_prev;
     Use *m_next;
-    Value *m_value;
+    Value *m_value{nullptr};
 
 public:
     void add_to_list(Use **list);
