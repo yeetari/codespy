@@ -304,10 +304,15 @@ Result<void, ParseError, StreamError> parse_class(Stream &stream, Visitor &visit
         case ConstantKind::String:
             CODESPY_TRY(stream.seek(2, SeekMode::Add));
             break;
+        case ConstantKind::MethodHandle:
+            CODESPY_TRY(stream.seek(3, SeekMode::Add));
+            break;
         case ConstantKind::FieldRef:
         case ConstantKind::MethodRef:
         case ConstantKind::InterfaceMethodRef:
         case ConstantKind::NameAndType:
+        case ConstantKind::Dynamic:
+        case ConstantKind::InvokeDynamic:
             CODESPY_TRY(stream.seek(4, SeekMode::Add));
             break;
         default:

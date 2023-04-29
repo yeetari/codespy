@@ -59,6 +59,9 @@ enum class ConstantKind : std::uint8_t {
     MethodRef = 10,
     InterfaceMethodRef = 11,
     NameAndType = 12,
+    MethodHandle = 15,
+    Dynamic = 17,
+    InvokeDynamic = 18,
 };
 
 enum class InvokeKind {
