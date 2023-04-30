@@ -48,6 +48,10 @@ void Dumper::visit_method(AccessFlags, StringView name, StringView descriptor) {
 
 void Dumper::visit_code(std::uint16_t, std::uint16_t) {}
 
+void Dumper::visit_exception_range(std::int32_t start_pc, std::int32_t end_pc, std::int32_t handler_pc, StringView type_name) {
+    codespy::println("{}: {} -> {} handled by {}", type_name, start_pc, end_pc, handler_pc);
+}
+
 void Dumper::visit_offset(std::int32_t offset) {
     codespy::print("    {d4 }: ", offset);
 }
@@ -239,6 +243,10 @@ void Dumper::visit_if_compare(CompareOp compare_op, std::int32_t true_offset, bo
 void Dumper::visit_return(BaseType type) {
     print_prefix_type(type);
     codespy::println("return");
+}
+
+void Dumper::visit_throw() {
+    codespy::println("athrow");
 }
 
 } // namespace codespy::bc

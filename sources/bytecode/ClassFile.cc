@@ -167,6 +167,8 @@ Result<void, ParseError, StreamError> parse_code(Stream &stream, Visitor &visito
         }
 
         switch (opcode) {
+        case Opcode::ATHROW:
+            continue;
         case Opcode::BIPUSH:
         case Opcode::LDC:
         case Opcode::NEWARRAY:
@@ -189,6 +191,15 @@ Result<void, ParseError, StreamError> parse_code(Stream &stream, Visitor &visito
         }
         std::cerr << "Unknown opcode: " << static_cast<std::uint32_t>(opcode) << '\n';
         return ParseError::UnknownOpcode;
+    }
+
+    auto exception_count = CODESPY_TRY(stream.read_be<std::uint16_t>());
+    while (exception_count-- > 0) {
+        const auto start_pc = static_cast<std::int16_t>(CODESPY_TRY(stream.read_be<std::uint16_t>()));
+        const auto end_pc = static_cast<std::int16_t>(CODESPY_TRY(stream.read_be<std::uint16_t>()));
+        const auto handler_pc = static_cast<std::int16_t>(CODESPY_TRY(stream.read_be<std::uint16_t>()));
+        const auto type_name = constant_pool.read_string_like(CODESPY_TRY(stream.read_be<std::uint16_t>()));
+        visitor.visit_exception_range(start_pc, end_pc, handler_pc, type_name);
     }
 
     // Rewind to start.
@@ -448,6 +459,9 @@ Result<void, ParseError, StreamError> parse_code(Stream &stream, Visitor &visito
             visitor.visit_new(codespy::format("[L{};", class_name));
             continue;
         }
+        case Opcode::ATHROW:
+            visitor.visit_throw();
+            continue;
         case Opcode::MULTIANEWARRAY: {
             const auto descriptor = constant_pool.read_string_like(CODESPY_TRY(stream.read_be<std::uint16_t>()));
             CODESPY_TRY(stream.read_byte());

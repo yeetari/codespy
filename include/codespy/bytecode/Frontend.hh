@@ -59,6 +59,8 @@ public:
 
     void visit_code(std::uint16_t max_stack, std::uint16_t max_locals) override;
     void visit_jump_target(std::int32_t offset) override;
+    void visit_exception_range(std::int32_t start_pc, std::int32_t end_pc, std::int32_t handler_pc,
+                               StringView type_name) override;
     void visit_offset(std::int32_t offset) override;
     void visit_constant(Constant constant) override;
     void visit_load(BaseType type, std::uint8_t local_index) override;
@@ -75,6 +77,7 @@ public:
     void visit_goto(std::int32_t offset) override;
     void visit_if_compare(CompareOp compare_op, std::int32_t true_offset, bool with_zero) override;
     void visit_return(BaseType type) override;
+    void visit_throw() override;
 
     Vector<ir::Function *> functions();
 };

@@ -121,12 +121,10 @@ ir::Function *Frontend::materialise_function(StringView owner, StringView name, 
 ir::BasicBlock *Frontend::materialise_block(std::int32_t offset) {
     auto &slot = m_block_map.at(offset);
     if (slot.block == nullptr) {
+        assert(slot.entry_stack.empty());
         slot.block = m_function->append_block();
         slot.entry_stack.ensure_size(m_stack.size());
         std::memcpy(slot.entry_stack.data(), m_stack.data(), m_stack.size_bytes());
-    } else {
-        // TODO: Need to actually handle stack merging.
-        assert(slot.entry_stack.empty());
     }
     return slot.block;
 }
@@ -172,6 +170,14 @@ void Frontend::visit_jump_target(std::int32_t offset) {
     m_block_map[offset];
 }
 
+void Frontend::visit_exception_range(std::int32_t, std::int32_t, std::int32_t handler_pc, StringView type_name) {
+    // TODO: catch instruction.
+    auto &handler_info = m_block_map[handler_pc];
+    assert(handler_info.block == nullptr);
+    handler_info.block = m_function->append_block();
+    handler_info.entry_stack.push(handler_info.block->append<ir::NewInst>(m_context->reference_type(type_name)));
+}
+
 void Frontend::visit_offset(std::int32_t offset) {
     // Check whether this is a jump target and create an immediate jump if needed.
     if (offset != 0 && m_block_map.contains(offset)) {
@@ -180,6 +186,11 @@ void Frontend::visit_offset(std::int32_t offset) {
             m_block->append<ir::BranchInst>(target);
         }
         m_block = target;
+
+        assert(m_stack.empty());
+        for (auto *value : m_block_map.at(offset).entry_stack) {
+            m_stack.push(value);
+        }
     }
 }
 
@@ -385,6 +396,11 @@ void Frontend::visit_return(BaseType type) {
 
     ir::Value *value = m_stack.take_last();
     m_block->append<ir::ReturnInst>(value);
+}
+
+void Frontend::visit_throw() {
+    ir::Value *exception_ref = m_stack.take_last();
+    m_block->append<ir::ThrowInst>(exception_ref);
 }
 
 Vector<ir::Function *> Frontend::functions() {

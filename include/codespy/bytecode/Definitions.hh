@@ -187,6 +187,7 @@ enum class Opcode : std::uint8_t {
     NEW = 187,
     NEWARRAY = 188,
     ANEWARRAY = 189,
+    ATHROW = 191,
 
     // Extended
     MULTIANEWARRAY = 197,

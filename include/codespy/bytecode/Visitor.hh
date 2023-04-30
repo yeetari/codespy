@@ -14,6 +14,8 @@ struct Visitor {
 
     virtual void visit_code(std::uint16_t max_stack, std::uint16_t max_locals) = 0;
     virtual void visit_jump_target(std::int32_t) {}
+    virtual void visit_exception_range(std::int32_t start_pc, std::int32_t end_pc, std::int32_t handler_pc,
+                                       StringView type_name) = 0;
     virtual void visit_offset(std::int32_t) {}
     virtual void visit_constant(Constant constant) = 0;
     virtual void visit_load(BaseType type, std::uint8_t local_index) = 0;
@@ -30,6 +32,7 @@ struct Visitor {
     virtual void visit_goto(std::int32_t offset) = 0;
     virtual void visit_if_compare(CompareOp compare_op, std::int32_t true_offset, bool with_zero) = 0;
     virtual void visit_return(BaseType type) = 0;
+    virtual void visit_throw() = 0;
 };
 
 } // namespace codespy::bc
