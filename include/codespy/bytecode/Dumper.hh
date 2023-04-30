@@ -14,7 +14,10 @@ public:
     void visit_constant(Constant constant) override;
     void visit_load(BaseType type, std::uint8_t local_index) override;
     void visit_store(BaseType type, std::uint8_t local_index) override;
+    void visit_array_load(BaseType type) override;
+    void visit_array_store(BaseType type) override;
     void visit_cast(BaseType from_type, BaseType to_type) override;
+    void visit_new(StringView descriptor) override;
     void visit_get_field(StringView owner, StringView name, StringView descriptor, bool instance) override;
     void visit_invoke(InvokeKind kind, StringView owner, StringView name, StringView descriptor) override;
     void visit_math_op(BaseType, MathOp math_op) override;

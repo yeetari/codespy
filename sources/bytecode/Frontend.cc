@@ -29,6 +29,11 @@ ir::Type *Frontend::lower_base_type(BaseType base_type) {
         return m_context->double_type();
     case BaseType::Reference:
         return m_context->reference_type("java/lang/Object");
+    case BaseType::Byte:
+        return m_context->int_type(8);
+    case BaseType::Char:
+    case BaseType::Short:
+        return m_context->int_type(16);
     case BaseType::Void:
         return m_context->void_type();
     }
@@ -119,6 +124,9 @@ ir::BasicBlock *Frontend::materialise_block(std::int32_t offset) {
         slot.block = m_function->append_block();
         slot.entry_stack.ensure_size(m_stack.size());
         std::memcpy(slot.entry_stack.data(), m_stack.data(), m_stack.size_bytes());
+    } else {
+        // TODO: Need to actually handle stack merging.
+        assert(slot.entry_stack.empty());
     }
     return slot.block;
 }
@@ -140,6 +148,10 @@ void Frontend::visit(StringView this_name, StringView) {
 void Frontend::visit_field(StringView, StringView) {}
 
 void Frontend::visit_method(AccessFlags access_flags, StringView name, StringView descriptor) {
+    m_block_map.clear();
+    m_local_map.clear();
+    m_stack.clear();
+
     ir::Type *this_type = nullptr;
     if ((access_flags & AccessFlags::Static) != AccessFlags::Static) {
         this_type = m_context->reference_type(m_this_name);
@@ -203,8 +215,46 @@ void Frontend::visit_store(BaseType, std::uint8_t local_index) {
     m_block->append<ir::StoreInst>(materialise_local(local_index), value);
 }
 
+void Frontend::visit_array_load(BaseType) {
+    ir::Value *index = m_stack.take_last();
+    ir::Value *array_ref = m_stack.take_last();
+    assert(array_ref->type()->kind() == ir::TypeKind::Array);
+    ir::Type *element_type = static_cast<ir::ArrayType *>(array_ref->type())->element_type();
+    // TODO: Check element_type compatible with base_type.
+    m_stack.push(m_block->append<ir::LoadArrayInst>(element_type, array_ref, index));
+}
+
+void Frontend::visit_array_store(BaseType) {
+    ir::Value *value = m_stack.take_last();
+    ir::Value *index = m_stack.take_last();
+    ir::Value *array_ref = m_stack.take_last();
+    m_block->append<ir::StoreArrayInst>(array_ref, index, value);
+}
+
 void Frontend::visit_cast(BaseType, BaseType) {
     assert(false);
+}
+
+void Frontend::visit_new(StringView descriptor) {
+    ir::Type *type = parse_type(descriptor);
+    if (type->kind() != ir::TypeKind::Array) {
+        // NEW
+        m_stack.push(m_block->append<ir::NewInst>(type));
+        return;
+    }
+
+    // Else one of NEWARRAY, ANEWARRAY, MULTIANEWARRAY.
+    std::uint8_t dimensions = 0;
+    for (auto *ty = type; ty->kind() == ir::TypeKind::Array; ty = static_cast<ir::ArrayType *>(ty)->element_type()) {
+        dimensions++;
+    }
+
+    // TODO(small-vector)
+    Vector<ir::Value *> counts(dimensions);
+    for (std::uint32_t i = counts.size(); i > 0; i--) {
+        counts[i - 1] = m_stack.take_last();
+    }
+    m_stack.push(m_block->append<ir::NewArrayInst>(type, counts.span()));
 }
 
 void Frontend::visit_get_field(StringView owner, StringView name, StringView descriptor, bool instance) {
@@ -269,6 +319,9 @@ void Frontend::visit_stack_op(StackOp stack_op) {
     case StackOp::Pop:
         m_stack.pop();
         break;
+    case StackOp::Dup:
+        m_stack.push(m_stack.last());
+        break;
     default:
         assert(false);
     }
@@ -325,13 +378,13 @@ void Frontend::visit_if_compare(CompareOp compare_op, std::int32_t true_offset, 
 }
 
 void Frontend::visit_return(BaseType type) {
-    switch (type) {
-    case BaseType::Void:
-        m_block->append<ir::ReturnInst>();
-        break;
-    default:
-        assert(false);
+    if (type == BaseType::Void) {
+        m_block->append<ir::ReturnInst>(nullptr);
+        return;
     }
+
+    ir::Value *value = m_stack.take_last();
+    m_block->append<ir::ReturnInst>(value);
 }
 
 Vector<ir::Function *> Frontend::functions() {

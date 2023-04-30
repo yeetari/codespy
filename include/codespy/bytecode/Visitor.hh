@@ -18,7 +18,10 @@ struct Visitor {
     virtual void visit_constant(Constant constant) = 0;
     virtual void visit_load(BaseType type, std::uint8_t local_index) = 0;
     virtual void visit_store(BaseType type, std::uint8_t local_index) = 0;
+    virtual void visit_array_load(BaseType type) = 0;
+    virtual void visit_array_store(BaseType type) = 0;
     virtual void visit_cast(BaseType from_type, BaseType to_type) = 0;
+    virtual void visit_new(StringView descriptor) = 0;
     virtual void visit_get_field(StringView owner, StringView name, StringView descriptor, bool instance) = 0;
     virtual void visit_invoke(InvokeKind kind, StringView owner, StringView name, StringView descriptor) = 0;
     virtual void visit_math_op(BaseType type, MathOp math_op) = 0;

@@ -18,6 +18,7 @@ struct Visitor;
 
 enum class ParseError {
     BadMagic,
+    InvalidArrayType,
     UnknownConstantPoolEntry,
     UnknownOpcode,
     UnhandledAttribute,

@@ -110,11 +110,25 @@ void Dumper::visit_store(BaseType type, std::uint8_t local_index) {
     codespy::println("store {}", local_index);
 }
 
+void Dumper::visit_array_load(BaseType type) {
+    print_prefix_type(type);
+    codespy::println("aload");
+}
+
+void Dumper::visit_array_store(BaseType type) {
+    print_prefix_type(type);
+    codespy::println("astore");
+}
+
 void Dumper::visit_cast(BaseType from_type, BaseType to_type) {
     print_prefix_type(from_type);
     codespy::print('2');
     print_prefix_type(to_type);
     codespy::print('\n');
+}
+
+void Dumper::visit_new(StringView descriptor) {
+    codespy::println("new {}", descriptor);
 }
 
 void Dumper::visit_get_field(StringView owner, StringView name, StringView descriptor, bool instance) {
@@ -123,7 +137,8 @@ void Dumper::visit_get_field(StringView owner, StringView name, StringView descr
 }
 
 void Dumper::visit_invoke(InvokeKind kind, StringView owner, StringView name, StringView descriptor) {
-    const auto *kind_string = kind == bc::InvokeKind::Special ? "special" : "virtual";
+    Array kind_strings{"interface", "special", "static", "virtual"};
+    const auto *kind_string = kind_strings[codespy::to_underlying(kind)];
     codespy::println("invoke{} {}.{}:{}", kind_string, owner, name, descriptor);
 }
 

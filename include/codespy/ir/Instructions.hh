@@ -94,6 +94,16 @@ public:
     Value *pointer() const { return operand(0); }
 };
 
+class LoadArrayInst : public Instruction {
+public:
+    static constexpr auto k_opcode = Opcode::LoadArray;
+
+    LoadArrayInst(BasicBlock *parent, Type *type, Value *array_ref, Value *index);
+
+    Value *array_ref() const { return operand(0); }
+    Value *index() const { return operand(1); }
+};
+
 class LoadFieldInst : public Instruction {
     String m_owner;
     String m_name;
@@ -109,6 +119,25 @@ public:
     Value *object_ref() const { return operand(0); }
 };
 
+class NewInst : public Instruction {
+public:
+    static constexpr auto k_opcode = Opcode::New;
+
+    NewInst(BasicBlock *parent, Type *type) : Instruction(k_opcode, parent, type, 0) {}
+};
+
+class NewArrayInst : public Instruction {
+    const std::uint8_t m_dimensions;
+
+public:
+    static constexpr auto k_opcode = Opcode::NewArray;
+
+    NewArrayInst(BasicBlock *parent, Type *type, Span<Value *> counts);
+
+    std::uint8_t dimensions() const { return m_dimensions; }
+    Value *count(unsigned index) const { return operand(index); }
+};
+
 class PhiInst : public Instruction {
 public:
     static constexpr auto k_opcode = Opcode::Phi;
@@ -120,7 +149,10 @@ class ReturnInst : public Instruction {
 public:
     static constexpr auto k_opcode = Opcode::Return;
 
-    explicit ReturnInst(BasicBlock *parent);
+    ReturnInst(BasicBlock *parent, Value *value);
+
+    bool is_void() const { return !has_operands(); }
+    Value *value() const { return has_operands() ? operand(0) : nullptr; }
 };
 
 class StoreInst : public Instruction {
@@ -131,6 +163,17 @@ public:
 
     Value *pointer() const { return operand(0); }
     Value *value() const { return operand(1); }
+};
+
+class StoreArrayInst : public Instruction {
+public:
+    static constexpr auto k_opcode = Opcode::StoreArray;
+
+    StoreArrayInst(BasicBlock *parent, Value *array_ref, Value *index, Value *value);
+
+    Value *array_ref() const { return operand(0); }
+    Value *index() const { return operand(1); }
+    Value *value() const { return operand(2); }
 };
 
 } // namespace codespy::ir

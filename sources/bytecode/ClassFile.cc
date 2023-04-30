@@ -3,6 +3,7 @@
 #include <codespy/bytecode/Definitions.hh>
 #include <codespy/bytecode/Visitor.hh>
 #include <codespy/container/FixedBuffer.hh>
+#include <codespy/support/Format.hh>
 #include <codespy/support/SpanStream.hh>
 #include <codespy/support/Stream.hh>
 
@@ -128,10 +129,10 @@ Result<void, ParseError, StreamError> parse_code(Stream &stream, Visitor &visito
         if (opcode <= Opcode::DCONST_1) {
             continue;
         }
-        if (opcode >= Opcode::ILOAD_0 && opcode <= Opcode::ALOAD_3) {
+        if (opcode >= Opcode::ILOAD_0 && opcode <= Opcode::SALOAD) {
             continue;
         }
-        if (opcode >= Opcode::ISTORE_0 && opcode <= Opcode::ASTORE_3) {
+        if (opcode >= Opcode::ISTORE_0 && opcode <= Opcode::SASTORE) {
             continue;
         }
         if (opcode >= Opcode::POP && opcode <= Opcode::SWAP) {
@@ -158,19 +159,30 @@ Result<void, ParseError, StreamError> parse_code(Stream &stream, Visitor &visito
 
         if (opcode >= Opcode::GET_STATIC && opcode <= Opcode::INVOKE_INTERFACE) {
             CODESPY_TRY(stream.read_be<std::uint16_t>());
+            if (opcode == Opcode::INVOKE_INTERFACE) {
+                CODESPY_TRY(stream.read_byte());
+                CODESPY_TRY(stream.read_byte());
+            }
             continue;
         }
 
         switch (opcode) {
         case Opcode::BIPUSH:
         case Opcode::LDC:
+        case Opcode::NEWARRAY:
             CODESPY_TRY(stream.read_byte());
             continue;
         case Opcode::SIPUSH:
         case Opcode::LDC_W:
         case Opcode::LDC2_W:
         case Opcode::IINC:
+        case Opcode::NEW:
+        case Opcode::ANEWARRAY:
             CODESPY_TRY(stream.read_be<std::uint16_t>());
+            continue;
+        case Opcode::MULTIANEWARRAY:
+            CODESPY_TRY(stream.read_be<std::uint16_t>());
+            CODESPY_TRY(stream.read_byte());
             continue;
         default:
             break;
@@ -223,6 +235,20 @@ Result<void, ParseError, StreamError> parse_code(Stream &stream, Visitor &visito
             const auto local_index = CODESPY_TRY(stream.read_byte());
             const auto type = static_cast<BaseType>(opcode - Opcode::ISTORE);
             visitor.visit_store(type, local_index);
+            continue;
+        }
+
+        // <x>aload
+        if (opcode >= Opcode::IALOAD && opcode <= Opcode::SALOAD) {
+            const auto type = static_cast<BaseType>(opcode - Opcode::IALOAD);
+            visitor.visit_array_load(type);
+            continue;
+        }
+
+        // <x>astore
+        if (opcode >= Opcode::IASTORE && opcode <= Opcode::SASTORE) {
+            const auto type = static_cast<BaseType>(opcode - Opcode::IASTORE);
+            visitor.visit_array_store(type);
             continue;
         }
 
@@ -285,7 +311,7 @@ Result<void, ParseError, StreamError> parse_code(Stream &stream, Visitor &visito
         }
 
         // <x>return
-        if (opcode >= Opcode::IRETURN && opcode <= Opcode::RETURN) {
+        if (opcode >= Opcode::IRETURN && opcode < Opcode::RETURN) {
             visitor.visit_return(static_cast<BaseType>(opcode - Opcode::IRETURN));
             continue;
         }
@@ -297,11 +323,26 @@ Result<void, ParseError, StreamError> parse_code(Stream &stream, Visitor &visito
             case Opcode::GET_STATIC:
                 visitor.visit_get_field(owner, name, descriptor, false);
                 break;
+            case Opcode::PUT_STATIC:
+                assert(false);
+            case Opcode::GET_FIELD:
+                visitor.visit_get_field(owner, name, descriptor, true);
+                break;
+            case Opcode::PUT_FIELD:
+                assert(false);
             case Opcode::INVOKE_VIRTUAL:
                 visitor.visit_invoke(InvokeKind::Virtual, owner, name, descriptor);
                 break;
             case Opcode::INVOKE_SPECIAL:
                 visitor.visit_invoke(InvokeKind::Special, owner, name, descriptor);
+                break;
+            case Opcode::INVOKE_STATIC:
+                visitor.visit_invoke(InvokeKind::Static, owner, name, descriptor);
+                break;
+            case Opcode::INVOKE_INTERFACE:
+                CODESPY_TRY(stream.read_byte());
+                CODESPY_TRY(stream.read_byte());
+                visitor.visit_invoke(InvokeKind::Interface, owner, name, descriptor);
                 break;
             default:
                 codespy::unreachable();
@@ -362,6 +403,55 @@ Result<void, ParseError, StreamError> parse_code(Stream &stream, Visitor &visito
         case Opcode::GOTO: {
             const auto offset = static_cast<std::int16_t>(CODESPY_TRY(stream.read_be<std::uint16_t>()));
             visitor.visit_goto(static_cast<std::int32_t>(offset) + current_offset);
+            continue;
+        }
+        case Opcode::RETURN:
+            visitor.visit_return(BaseType::Void);
+            continue;
+        case Opcode::NEW: {
+            const auto class_name = constant_pool.read_string_like(CODESPY_TRY(stream.read_be<std::uint16_t>()));
+            visitor.visit_new(codespy::format("L{};", class_name));
+            continue;
+        }
+        case Opcode::NEWARRAY:
+            switch (CODESPY_TRY(stream.read_byte())) {
+            case 4:
+                visitor.visit_new("[Z");
+                break;
+            case 5:
+                visitor.visit_new("[C");
+                break;
+            case 6:
+                visitor.visit_new("[F");
+                break;
+            case 7:
+                visitor.visit_new("[D");
+                break;
+            case 8:
+                visitor.visit_new("[B");
+                break;
+            case 9:
+                visitor.visit_new("[S");
+                break;
+            case 10:
+                visitor.visit_new("[I");
+                break;
+            case 11:
+                visitor.visit_new("[J");
+                break;
+            default:
+                return ParseError::InvalidArrayType;
+            }
+            continue;
+        case Opcode::ANEWARRAY: {
+            const auto class_name = constant_pool.read_string_like(CODESPY_TRY(stream.read_be<std::uint16_t>()));
+            visitor.visit_new(codespy::format("[L{};", class_name));
+            continue;
+        }
+        case Opcode::MULTIANEWARRAY: {
+            const auto descriptor = constant_pool.read_string_like(CODESPY_TRY(stream.read_be<std::uint16_t>()));
+            CODESPY_TRY(stream.read_byte());
+            visitor.visit_new(descriptor);
             continue;
         }
         default:

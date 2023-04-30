@@ -29,9 +29,13 @@ public:
     void visit(CallInst &) override;
     void visit(CompareInst &) override;
     void visit(LoadInst &) override;
+    void visit(LoadArrayInst &) override;
     void visit(LoadFieldInst &) override;
+    void visit(NewInst &) override;
+    void visit(NewArrayInst &) override;
     void visit(ReturnInst &) override;
     void visit(StoreInst &) override;
+    void visit(StoreArrayInst &) override;
 };
 
 String type_string(Type *type) {
@@ -148,7 +152,7 @@ void Dumper::visit(BinaryInst &binary) {
 void Dumper::visit(BranchInst &branch) {
     if (branch.is_conditional()) {
         codespy::print("br {}, {}, {}", value_string(branch.condition()), value_string(branch.true_target()),
-                         value_string(branch.false_target()));
+                       value_string(branch.false_target()));
     } else {
         codespy::print("br {}", value_string(branch.target()));
     }
@@ -165,7 +169,7 @@ void Dumper::visit(CallInst &call) {
             codespy::print(", ");
         }
         first = false;
-        codespy::print("{}", value_string(argument));
+        codespy::print(value_string(argument));
     }
     codespy::print(")");
 }
@@ -198,6 +202,10 @@ void Dumper::visit(LoadInst &load) {
     codespy::print("load {}", value_string(load.pointer()));
 }
 
+void Dumper::visit(LoadArrayInst &load_array) {
+    codespy::print("load_array {}[{}]", value_string(load_array.array_ref()), value_string(load_array.index()));
+}
+
 void Dumper::visit(LoadFieldInst &load_field) {
     codespy::print("load_field {} {}.{}", type_string(load_field.type()), load_field.owner(), load_field.name());
     if (load_field.has_object_ref()) {
@@ -205,12 +213,36 @@ void Dumper::visit(LoadFieldInst &load_field) {
     }
 }
 
-void Dumper::visit(ReturnInst &) {
-    codespy::print("ret void");
+void Dumper::visit(NewInst &new_inst) {
+    codespy::print("new {}", type_string(new_inst.type()));
+}
+
+void Dumper::visit(NewArrayInst &new_array) {
+    codespy::print("new_array {} [", type_string(new_array.type()));
+    for (std::uint8_t i = 0; i < new_array.dimensions(); i++) {
+        if (i != 0) {
+            codespy::print(", ");
+        }
+        codespy::print(value_string(new_array.count(i)));
+    }
+    codespy::print(']');
+}
+
+void Dumper::visit(ReturnInst &return_inst) {
+    if (return_inst.is_void()) {
+        codespy::print("ret void");
+        return;
+    }
+    codespy::print("ret {}", value_string(return_inst.value()));
 }
 
 void Dumper::visit(StoreInst &store) {
     codespy::print("store {}, {}", value_string(store.pointer()), value_string(store.value()));
+}
+
+void Dumper::visit(StoreArrayInst &store_array) {
+    codespy::print("store_array {}[{}], {}", value_string(store_array.array_ref()), value_string(store_array.index()),
+                   value_string(store_array.value()));
 }
 
 } // namespace

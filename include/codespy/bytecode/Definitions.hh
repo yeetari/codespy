@@ -44,6 +44,9 @@ enum class BaseType {
     Float,
     Double,
     Reference,
+    Byte,
+    Char,
+    Short,
     Void,
 };
 
@@ -95,6 +98,7 @@ enum class StackOp {
 };
 
 enum class InvokeKind {
+    Interface,
     Special,
     Static,
     Virtual,
@@ -125,14 +129,16 @@ enum class Opcode : std::uint8_t {
     ALOAD = 25,
     ILOAD_0 = 26,
     ALOAD_3 = 45,
-    // TODO: <x>aload
+    IALOAD = 46,
+    SALOAD = 53,
 
     // Stores
     ISTORE = 54,
     ASTORE = 58,
     ISTORE_0 = 59,
     ASTORE_3 = 78,
-    // TODO: <x>astore
+    IASTORE = 79,
+    SASTORE = 86,
 
     // Stack
     POP = 87,
@@ -178,6 +184,12 @@ enum class Opcode : std::uint8_t {
     INVOKE_SPECIAL = 183,
     INVOKE_STATIC = 184,
     INVOKE_INTERFACE = 185,
+    NEW = 187,
+    NEWARRAY = 188,
+    ANEWARRAY = 189,
+
+    // Extended
+    MULTIANEWARRAY = 197,
 };
 
 inline constexpr AccessFlags operator&(AccessFlags lhs, AccessFlags rhs) {

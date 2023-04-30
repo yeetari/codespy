@@ -21,7 +21,11 @@ enum class Opcode : std::uint8_t {
     Store,
 
     // Java specific
+    LoadArray,
     LoadField,
+    New,
+    NewArray,
+    StoreArray,
 };
 
 template <typename T>

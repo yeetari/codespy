@@ -35,14 +35,26 @@ void Instruction::accept(Visitor &visitor) {
     case Opcode::Load:
         visitor.visit(static_cast<LoadInst &>(*this));
         break;
+    case Opcode::LoadArray:
+        visitor.visit(static_cast<LoadArrayInst &>(*this));
+        break;
     case Opcode::LoadField:
         visitor.visit(static_cast<LoadFieldInst &>(*this));
+        break;
+    case Opcode::New:
+        visitor.visit(static_cast<NewInst &>(*this));
+        break;
+    case Opcode::NewArray:
+        visitor.visit(static_cast<NewArrayInst &>(*this));
         break;
     case Opcode::Return:
         visitor.visit(static_cast<ReturnInst &>(*this));
         break;
     case Opcode::Store:
         visitor.visit(static_cast<StoreInst &>(*this));
+        break;
+    case Opcode::StoreArray:
+        visitor.visit(static_cast<StoreArrayInst &>(*this));
         break;
     default:
         codespy::unreachable();

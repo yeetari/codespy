@@ -74,6 +74,18 @@ void Value::destroy() {
         case Opcode::Load:
             delete inst->as<LoadInst>();
             break;
+        case Opcode::LoadArray:
+            delete inst->as<LoadArrayInst>();
+            break;
+        case Opcode::LoadField:
+            delete inst->as<LoadFieldInst>();
+            break;
+        case Opcode::New:
+            delete inst->as<NewInst>();
+            break;
+        case Opcode::NewArray:
+            delete inst->as<NewArrayInst>();
+            break;
         case Opcode::Phi:
             delete inst->as<PhiInst>();
             break;
@@ -83,8 +95,8 @@ void Value::destroy() {
         case Opcode::Store:
             delete inst->as<StoreInst>();
             break;
-        case Opcode::LoadField:
-            delete inst->as<LoadFieldInst>();
+        case Opcode::StoreArray:
+            delete inst->as<StoreArrayInst>();
             break;
         }
         break;

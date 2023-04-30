@@ -68,11 +68,24 @@ LoadInst::LoadInst(BasicBlock *parent, Type *type, Value *pointer) : Instruction
     set_operand(0, pointer);
 }
 
+LoadArrayInst::LoadArrayInst(BasicBlock *parent, Type *type, Value *array_ref, Value *index)
+    : Instruction(k_opcode, parent, type, 2) {
+    set_operand(0, array_ref);
+    set_operand(1, index);
+}
+
 LoadFieldInst::LoadFieldInst(BasicBlock *parent, Type *type, String owner, String name, Value *object_ref)
     : Instruction(k_opcode, parent, type, object_ref != nullptr ? 1 : 0), m_owner(std::move(owner)),
       m_name(std::move(name)) {
     if (object_ref != nullptr) {
         set_operand(0, object_ref);
+    }
+}
+
+NewArrayInst::NewArrayInst(BasicBlock *parent, Type *type, Span<Value *> counts)
+    : Instruction(k_opcode, parent, type, counts.size()), m_dimensions(counts.size()) {
+    for (unsigned i = 0; auto *count : counts) {
+        set_operand(i++, count);
     }
 }
 
@@ -85,12 +98,23 @@ PhiInst::PhiInst(BasicBlock *parent, Span<std::pair<BasicBlock *, Value *>> inco
     }
 }
 
-ReturnInst::ReturnInst(BasicBlock *parent) : Instruction(k_opcode, parent, parent->context().void_type(), 0) {}
+ReturnInst::ReturnInst(BasicBlock *parent, Value *value) : Instruction(k_opcode, parent, parent->context().void_type(), value != nullptr ? 1 : 0) {
+    if (value != nullptr) {
+        set_operand(0, value);
+    }
+}
 
 StoreInst::StoreInst(BasicBlock *parent, Value *pointer, Value *value)
     : Instruction(k_opcode, parent, parent->context().void_type(), 2) {
     set_operand(0, pointer);
     set_operand(1, value);
+}
+
+StoreArrayInst::StoreArrayInst(BasicBlock *parent, Value *array_ref, Value *index, Value *value)
+    : Instruction(k_opcode, parent, parent->context().void_type(), 3) {
+    set_operand(0, array_ref);
+    set_operand(1, index);
+    set_operand(2, value);
 }
 
 } // namespace codespy::ir
