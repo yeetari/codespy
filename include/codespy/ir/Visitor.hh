@@ -14,6 +14,7 @@ class NewArrayInst;
 class ReturnInst;
 class StoreInst;
 class StoreArrayInst;
+class ThrowInst;
 
 class Visitor {
 public:
@@ -29,6 +30,7 @@ public:
     virtual void visit(ReturnInst &return_inst) = 0;
     virtual void visit(StoreInst &store) = 0;
     virtual void visit(StoreArrayInst &store_array) = 0;
+    virtual void visit(ThrowInst &throw_inst) = 0;
 };
 
 } // namespace codespy::ir

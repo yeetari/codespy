@@ -56,6 +56,9 @@ void Instruction::accept(Visitor &visitor) {
     case Opcode::StoreArray:
         visitor.visit(static_cast<StoreArrayInst &>(*this));
         break;
+    case Opcode::Throw:
+        visitor.visit(static_cast<ThrowInst &>(*this));
+        break;
     default:
         codespy::unreachable();
     }
@@ -69,6 +72,7 @@ bool Instruction::is_terminator() const {
     switch (m_opcode) {
     case Opcode::Branch:
     case Opcode::Return:
+    case Opcode::Throw:
         return true;
     default:
         return false;

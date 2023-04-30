@@ -98,7 +98,8 @@ PhiInst::PhiInst(BasicBlock *parent, Span<std::pair<BasicBlock *, Value *>> inco
     }
 }
 
-ReturnInst::ReturnInst(BasicBlock *parent, Value *value) : Instruction(k_opcode, parent, parent->context().void_type(), value != nullptr ? 1 : 0) {
+ReturnInst::ReturnInst(BasicBlock *parent, Value *value)
+    : Instruction(k_opcode, parent, parent->context().void_type(), value != nullptr ? 1 : 0) {
     if (value != nullptr) {
         set_operand(0, value);
     }
@@ -115,6 +116,11 @@ StoreArrayInst::StoreArrayInst(BasicBlock *parent, Value *array_ref, Value *inde
     set_operand(0, array_ref);
     set_operand(1, index);
     set_operand(2, value);
+}
+
+ThrowInst::ThrowInst(BasicBlock *parent, Value *exception_ref)
+    : Instruction(k_opcode, parent, parent->context().void_type(), 1) {
+    set_operand(0, exception_ref);
 }
 
 } // namespace codespy::ir

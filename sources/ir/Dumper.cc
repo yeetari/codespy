@@ -36,6 +36,7 @@ public:
     void visit(ReturnInst &) override;
     void visit(StoreInst &) override;
     void visit(StoreArrayInst &) override;
+    void visit(ThrowInst &) override;
 };
 
 String type_string(Type *type) {
@@ -243,6 +244,10 @@ void Dumper::visit(StoreInst &store) {
 void Dumper::visit(StoreArrayInst &store_array) {
     codespy::print("store_array {}[{}], {}", value_string(store_array.array_ref()), value_string(store_array.index()),
                    value_string(store_array.value()));
+}
+
+void Dumper::visit(ThrowInst &throw_inst) {
+    codespy::print("throw {}", value_string(throw_inst.exception_ref()));
 }
 
 } // namespace

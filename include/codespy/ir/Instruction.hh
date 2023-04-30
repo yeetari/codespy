@@ -26,6 +26,7 @@ enum class Opcode : std::uint8_t {
     New,
     NewArray,
     StoreArray,
+    Throw,
 };
 
 template <typename T>

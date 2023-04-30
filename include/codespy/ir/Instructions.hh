@@ -176,4 +176,13 @@ public:
     Value *value() const { return operand(2); }
 };
 
+class ThrowInst : public Instruction {
+public:
+    static constexpr auto k_opcode = Opcode::Throw;
+
+    ThrowInst(BasicBlock *parent, Value *exception_ref);
+
+    Value *exception_ref() const { return operand(0); }
+};
+
 } // namespace codespy::ir

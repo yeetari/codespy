@@ -98,6 +98,9 @@ void Value::destroy() {
         case Opcode::StoreArray:
             delete inst->as<StoreArrayInst>();
             break;
+        case Opcode::Throw:
+            delete inst->as<ThrowInst>();
+            break;
         }
         break;
     }
