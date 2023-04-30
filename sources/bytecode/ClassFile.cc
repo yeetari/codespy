@@ -34,10 +34,26 @@ public:
 
 Constant ConstantPool::read_constant(std::uint16_t index) const {
     switch (static_cast<ConstantKind>(m_bytes[m_offsets[index] - 1])) {
-    case ConstantKind::Integer:
-    case ConstantKind::Float:
-    case ConstantKind::Long:
-    case ConstantKind::Double:
+    case ConstantKind::Integer: {
+        SpanStream stream(m_bytes.span().subspan(m_offsets[index]));
+        return static_cast<std::int32_t>(CODESPY_ASSUME(stream.read_be<std::uint32_t>()));
+    }
+    case ConstantKind::Float: {
+        SpanStream stream(m_bytes.span().subspan(m_offsets[index]));
+        float flt;
+        CODESPY_ASSUME(stream.read({&flt, sizeof(float)}));
+        return flt;
+    }
+    case ConstantKind::Long: {
+        SpanStream stream(m_bytes.span().subspan(m_offsets[index]));
+        return static_cast<std::int64_t>(CODESPY_ASSUME(stream.read_be<std::uint64_t>()));
+    }
+    case ConstantKind::Double: {
+        SpanStream stream(m_bytes.span().subspan(m_offsets[index]));
+        double dbl;
+        CODESPY_ASSUME(stream.read({&dbl, sizeof(double)}));
+        return dbl;
+    }
     case ConstantKind::Class:
         assert(false);
     case ConstantKind::String:
