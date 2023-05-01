@@ -246,6 +246,10 @@ void Frontend::visit_cast(BaseType, BaseType) {
     assert(false);
 }
 
+void Frontend::visit_compare(BaseType, bool) {
+    assert(false);
+}
+
 void Frontend::visit_new(StringView descriptor) {
     ir::Type *type = parse_type(descriptor);
     if (type->kind() != ir::TypeKind::Array) {
@@ -274,6 +278,10 @@ void Frontend::visit_get_field(StringView owner, StringView name, StringView des
         object_ref = m_stack.take_last();
     }
     m_stack.push(m_block->append<ir::LoadFieldInst>(parse_type(descriptor), owner, name, object_ref));
+}
+
+void Frontend::visit_put_field(StringView, StringView, StringView, bool) {
+    assert(false);
 }
 
 void Frontend::visit_invoke(InvokeKind kind, StringView owner, StringView name, StringView descriptor) {
@@ -319,6 +327,16 @@ void Frontend::visit_math_op(BaseType base_type, MathOp math_op) {
     m_stack.push(m_block->append<ir::BinaryInst>(lower_base_type(base_type), lower_binary_math_op(math_op), lhs, rhs));
 }
 
+void Frontend::visit_monitor_op(MonitorOp) {
+    assert(false);
+}
+
+void Frontend::visit_reference_op(ReferenceOp reference_op) {
+    assert(reference_op == ReferenceOp::Throw);
+    ir::Value *exception_ref = m_stack.take_last();
+    m_block->append<ir::ThrowInst>(exception_ref);
+}
+
 void Frontend::visit_stack_op(StackOp stack_op) {
     switch (stack_op) {
     case StackOp::Pop2:
@@ -336,6 +354,10 @@ void Frontend::visit_stack_op(StackOp stack_op) {
     default:
         assert(false);
     }
+}
+
+void Frontend::visit_type_op(TypeOp, StringView) {
+    assert(false);
 }
 
 void Frontend::visit_iinc(std::uint8_t local_index, std::int32_t increment) {
@@ -366,13 +388,13 @@ static ir::CompareOp lower_compare_op(CompareOp compare_op) {
     case CompareOp::LessEqual:
         return ir::CompareOp::LessEqual;
     default:
-        codespy::unreachable();
+        assert(false);
     }
 }
 
-void Frontend::visit_if_compare(CompareOp compare_op, std::int32_t true_offset, bool with_zero) {
+void Frontend::visit_if_compare(CompareOp compare_op, std::int32_t true_offset, CompareRhs compare_rhs) {
     ir::Value *rhs = nullptr;
-    if (!with_zero) {
+    if (compare_rhs == CompareRhs::Stack) {
         rhs = m_stack.take_last();
     }
     ir::Value *lhs = m_stack.take_last();
@@ -388,6 +410,15 @@ void Frontend::visit_if_compare(CompareOp compare_op, std::int32_t true_offset, 
     m_block = false_target;
 }
 
+void Frontend::visit_table_switch(std::int32_t, std::int32_t, std::int32_t,
+                                  Span<std::int32_t>) {
+    assert(false);
+}
+
+void Frontend::visit_lookup_switch(std::int32_t, Span<std::pair<std::int32_t, std::int32_t>>) {
+    assert(false);
+}
+
 void Frontend::visit_return(BaseType type) {
     if (type == BaseType::Void) {
         m_block->append<ir::ReturnInst>(nullptr);
@@ -396,11 +427,6 @@ void Frontend::visit_return(BaseType type) {
 
     ir::Value *value = m_stack.take_last();
     m_block->append<ir::ReturnInst>(value);
-}
-
-void Frontend::visit_throw() {
-    ir::Value *exception_ref = m_stack.take_last();
-    m_block->append<ir::ThrowInst>(exception_ref);
 }
 
 Vector<ir::Function *> Frontend::functions() {

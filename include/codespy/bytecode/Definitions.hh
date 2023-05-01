@@ -74,6 +74,14 @@ enum class CompareOp {
     GreaterEqual,
     GreaterThan,
     LessEqual,
+    ReferenceEqual,
+    ReferenceNotEqual,
+};
+
+enum class CompareRhs {
+    Stack,
+    Zero,
+    Null,
 };
 
 enum class MathOp {
@@ -83,6 +91,22 @@ enum class MathOp {
     Div,
     Rem,
     Neg,
+    Shl,
+    Shr,
+    UShr,
+    And,
+    Or,
+    Xor,
+};
+
+enum class MonitorOp {
+    Enter,
+    Exit,
+};
+
+enum class ReferenceOp {
+    ArrayLength,
+    Throw,
 };
 
 enum class StackOp {
@@ -97,6 +121,11 @@ enum class StackOp {
     Swap,
 };
 
+enum class TypeOp {
+    CheckCast,
+    InstanceOf,
+};
+
 enum class InvokeKind {
     Interface,
     Special,
@@ -104,7 +133,8 @@ enum class InvokeKind {
     Virtual,
 };
 
-using Constant = Variant<std::int32_t, std::int64_t, float, double, StringView>;
+struct NullReference {};
+using Constant = Variant<NullReference, std::int32_t, std::int64_t, float, double, StringView>;
 
 enum class Opcode : std::uint8_t {
     // Constants
@@ -152,6 +182,17 @@ enum class Opcode : std::uint8_t {
     IREM = 112,
     INEG = 116,
     DNEG = 119,
+    ISHL = 120,
+    LSHL = 121,
+    ISHR = 122,
+    LSHR = 123,
+    IUSHR = 124,
+    LUSHR = 125,
+    IAND = 126,
+    LAND = 127,
+    IOR = 128,
+    LOR = 129,
+    IXOR = 130,
     LXOR = 131,
     IINC = 132,
 
@@ -165,13 +206,20 @@ enum class Opcode : std::uint8_t {
     I2S = 147,
 
     // Comparisons
+    LCMP = 148,
+    FCMPL = 149,
+    FCMPG = 150,
+    DCMPL = 151,
+    DCMPG = 152,
     IFEQ = 153,
     IFLE = 158,
     IF_ICMPEQ = 159,
-    IF_ICMPLE = 164,
+    IF_ACMPNE = 166,
 
     // Control
     GOTO = 167,
+    TABLESWITCH = 170,
+    LOOKUPSWITCH = 171,
     IRETURN = 172,
     RETURN = 177,
 
@@ -187,10 +235,18 @@ enum class Opcode : std::uint8_t {
     NEW = 187,
     NEWARRAY = 188,
     ANEWARRAY = 189,
+    ARRAYLENGTH = 190,
     ATHROW = 191,
+    CHECKCAST = 192,
+    INSTANCEOF = 193,
+    MONITORENTER = 194,
+    MONITOREXIT = 195,
 
     // Extended
+    WIDE = 196,
     MULTIANEWARRAY = 197,
+    IFNULL = 198,
+    IFNONNULL = 199,
 };
 
 inline constexpr AccessFlags operator&(AccessFlags lhs, AccessFlags rhs) {
