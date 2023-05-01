@@ -410,13 +410,34 @@ void Frontend::visit_if_compare(CompareOp compare_op, std::int32_t true_offset, 
     m_block = false_target;
 }
 
-void Frontend::visit_table_switch(std::int32_t, std::int32_t, std::int32_t,
-                                  Span<std::int32_t>) {
-    assert(false);
+template <typename F>
+void Frontend::emit_switch(std::size_t case_count, std::int32_t default_pc, F next_case) {
+    ir::Value *key_value = m_stack.take_last();
+    auto *key_type = static_cast<ir::IntType *>(key_value->type());
+    auto *default_target = materialise_block(default_pc);
+
+    Vector<std::pair<ir::Value *, ir::BasicBlock *>> targets(case_count);
+    for (std::size_t i = 0; i < case_count; i++) {
+        const auto [case_value, offset] = next_case();
+        targets[i] = std::make_pair(m_context->constant_int(key_type, case_value), materialise_block(offset));
+    }
+    m_block->append<ir::SwitchInst>(key_value, default_target, targets.span());
 }
 
-void Frontend::visit_lookup_switch(std::int32_t, Span<std::pair<std::int32_t, std::int32_t>>) {
-    assert(false);
+void Frontend::visit_table_switch(std::int32_t low, std::int32_t, std::int32_t default_pc,
+                                  Span<std::int32_t> table) {
+    std::int32_t index = low;
+    emit_switch(table.size(), default_pc, [&] {
+        index++;
+        return std::make_pair(index - 1, table[index - low - 1]);
+    });
+}
+
+void Frontend::visit_lookup_switch(std::int32_t default_pc, Span<std::pair<std::int32_t, std::int32_t>> table) {
+    auto *it = table.begin();
+    emit_switch(table.size(), default_pc, [&] {
+        return *it++;
+    });
 }
 
 void Frontend::visit_return(BaseType type) {

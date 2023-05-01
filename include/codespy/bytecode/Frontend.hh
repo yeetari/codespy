@@ -44,6 +44,9 @@ private:
     ir::BasicBlock *materialise_block(std::int32_t offset);
     ir::Value *materialise_local(std::uint16_t index);
 
+    template <typename F>
+    void emit_switch(std::size_t case_count, std::int32_t default_pc, F next_case);
+
 public:
     Frontend();
     Frontend(const Frontend &) = delete;
