@@ -35,7 +35,7 @@ public:
     IntType *int_type(std::uint16_t bit_width);
     ReferenceType *reference_type(String class_name);
 
-    ConstantInt *constant_int(IntType *type, std::uint64_t value);
+    ConstantInt *constant_int(IntType *type, std::int64_t value);
     ConstantString *constant_string(String value);
 };
 

@@ -118,6 +118,30 @@ StoreArrayInst::StoreArrayInst(BasicBlock *parent, Value *array_ref, Value *inde
     set_operand(2, value);
 }
 
+SwitchInst::SwitchInst(BasicBlock *parent, Value *value, BasicBlock *default_target,
+                       Span<std::pair<Value *, BasicBlock *>> targets)
+    : Instruction(k_opcode, parent, parent->context().void_type(), 2 + targets.size() * 2),
+      m_case_count(targets.size()) {
+    set_operand(0, value);
+    set_operand(1, default_target);
+    for (unsigned i = 2; const auto &[case_value, target] : targets) {
+        set_operand(i++, case_value);
+        set_operand(i++, target);
+    }
+}
+
+BasicBlock *SwitchInst::default_target() const {
+    return static_cast<BasicBlock *>(operand(1));
+}
+
+Value *SwitchInst::case_value(unsigned index) const {
+    return operand(index * 2 + 2);
+}
+
+BasicBlock *SwitchInst::case_target(unsigned index) const{
+    return static_cast<BasicBlock *>(operand(index * 2 + 3));
+}
+
 ThrowInst::ThrowInst(BasicBlock *parent, Value *exception_ref)
     : Instruction(k_opcode, parent, parent->context().void_type(), 1) {
     set_operand(0, exception_ref);

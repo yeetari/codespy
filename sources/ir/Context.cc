@@ -42,7 +42,7 @@ ReferenceType *Context::reference_type(String class_name) {
     return m_reference_types.at(class_name).ptr();
 }
 
-ConstantInt *Context::constant_int(IntType *type, std::uint64_t value) {
+ConstantInt *Context::constant_int(IntType *type, std::int64_t value) {
     for (const auto &constant : m_int_constants) {
         if (constant->type() == type && constant->value() == value) {
             return constant.ptr();

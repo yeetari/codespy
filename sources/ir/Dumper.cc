@@ -36,6 +36,7 @@ public:
     void visit(ReturnInst &) override;
     void visit(StoreInst &) override;
     void visit(StoreArrayInst &) override;
+    void visit(SwitchInst &) override;
     void visit(ThrowInst &) override;
 };
 
@@ -244,6 +245,15 @@ void Dumper::visit(StoreInst &store) {
 void Dumper::visit(StoreArrayInst &store_array) {
     codespy::print("store_array {}[{}], {}", value_string(store_array.array_ref()), value_string(store_array.index()),
                    value_string(store_array.value()));
+}
+
+void Dumper::visit(SwitchInst &switch_inst) {
+    codespy::println("switch {}, {}, [", value_string(switch_inst.value()), value_string(switch_inst.default_target()));
+    for (unsigned i = 0; i < switch_inst.case_count(); i++) {
+        codespy::println("      {}, {}", value_string(switch_inst.case_value(i)),
+                         value_string(switch_inst.case_target(i)));
+    }
+    codespy::print("    ]");
 }
 
 void Dumper::visit(ThrowInst &throw_inst) {

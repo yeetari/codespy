@@ -176,6 +176,22 @@ public:
     Value *value() const { return operand(2); }
 };
 
+class SwitchInst : public Instruction {
+    const unsigned m_case_count;
+
+public:
+    static constexpr auto k_opcode = Opcode::Switch;
+
+    SwitchInst(BasicBlock *parent, Value *value, BasicBlock *default_target,
+               Span<std::pair<Value *, BasicBlock *>> targets);
+
+    unsigned case_count() const { return m_case_count; }
+    Value *value() const { return operand(0); }
+    BasicBlock *default_target() const;
+    Value *case_value(unsigned index) const;
+    BasicBlock *case_target(unsigned index) const;
+};
+
 class ThrowInst : public Instruction {
 public:
     static constexpr auto k_opcode = Opcode::Throw;
