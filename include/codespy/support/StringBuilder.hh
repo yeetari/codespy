@@ -10,21 +10,24 @@
 #include <cstddef>
 #include <cstdint>
 
-// TODO: Testing and benchmarking.
-// TODO: Compile time format strings + checking?
-
 namespace codespy {
 
 class StringBuilder {
     LargeVector<char> m_buffer;
 
     void append_single(double, const char *);
-    void append_single(std::size_t, const char *);
+    void append_single(std::int64_t, const char *);
+    void append_single(std::uint64_t, const char *);
     void append_single(StringView, const char *);
 
-    template <Integral T>
+    template <SignedIntegral T>
     void append_single(T arg, const char *opts) {
-        append_single(static_cast<std::size_t>(arg), opts);
+        append_single(static_cast<std::int64_t>(arg), opts);
+    }
+
+    template <UnsignedIntegral T>
+    void append_single(T arg, const char *opts) {
+        append_single(static_cast<std::uint64_t>(arg), opts);
     }
 
     template <typename T>

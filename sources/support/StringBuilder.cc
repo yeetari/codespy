@@ -20,7 +20,15 @@ void StringBuilder::append_single(double arg, const char *) {
     m_buffer.extend(StringView(buf.data(), std::min(buf.size(), static_cast<std::size_t>(length))));
 }
 
-void StringBuilder::append_single(std::size_t arg, const char *opts) {
+void StringBuilder::append_single(std::int64_t arg, const char *opts) {
+    if (arg < 0) {
+        arg = -arg;
+        m_buffer.push('-');
+    }
+    append_single(static_cast<std::uint64_t>(arg), opts);
+}
+
+void StringBuilder::append_single(std::uint64_t arg, const char *opts) {
     const size_t base = opts[0] == 'h' ? 16 : 10;
     Array<char, 30> buf{};
     std::uint8_t len = 0;
