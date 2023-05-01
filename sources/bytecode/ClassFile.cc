@@ -42,9 +42,8 @@ Constant ConstantPool::read_constant(std::uint16_t index) const {
     }
     case ConstantKind::Float: {
         SpanStream stream(m_bytes.span().subspan(m_offsets[index]));
-        float flt;
-        CODESPY_ASSUME(stream.read({&flt, sizeof(float)}));
-        return flt;
+        const auto as_int = CODESPY_EXPECT(stream.read_be<std::uint32_t>());
+        return std::bit_cast<float>(as_int);
     }
     case ConstantKind::Long: {
         SpanStream stream(m_bytes.span().subspan(m_offsets[index]));
@@ -52,9 +51,8 @@ Constant ConstantPool::read_constant(std::uint16_t index) const {
     }
     case ConstantKind::Double: {
         SpanStream stream(m_bytes.span().subspan(m_offsets[index]));
-        double dbl;
-        CODESPY_ASSUME(stream.read({&dbl, sizeof(double)}));
-        return dbl;
+        const auto as_int = CODESPY_EXPECT(stream.read_be<std::uint64_t>());
+        return std::bit_cast<double>(as_int);
     }
     case ConstantKind::Class:
     case ConstantKind::String:
