@@ -4,15 +4,14 @@
 
 namespace codespy::bc {
 
-class Dumper : public Visitor {
+class Dumper : public ClassVisitor, public CodeVisitor {
 public:
     void visit(StringView this_name, StringView super_name) override;
     void visit_field(StringView name, StringView descriptor) override;
     void visit_method(AccessFlags access_flags, StringView name, StringView descriptor) override;
-    void visit_code(std::uint16_t max_stack, std::uint16_t max_locals) override;
+    void visit_code(CodeAttribute &code) override;
     void visit_exception_range(std::int32_t start_pc, std::int32_t end_pc, std::int32_t handler_pc,
                                StringView type_name) override;
-    void visit_offset(std::int32_t offset) override;
     void visit_constant(Constant constant) override;
     void visit_load(BaseType type, std::uint8_t local_index) override;
     void visit_store(BaseType type, std::uint8_t local_index) override;

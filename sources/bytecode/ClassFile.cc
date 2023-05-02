@@ -13,7 +13,6 @@
 #include <tuple>
 
 namespace codespy::bc {
-namespace {
 
 class ConstantPool {
     FixedBuffer<std::uint8_t> m_bytes;
@@ -85,7 +84,8 @@ StringView ConstantPool::read_utf(std::uint16_t index) const {
 }
 
 template <typename F>
-Result<void, ParseError, StreamError> iterate_attributes(Stream &stream, ConstantPool &constant_pool, F callback) {
+static Result<void, ParseError, StreamError> iterate_attributes(Stream &stream, ConstantPool &constant_pool,
+                                                                F callback) {
     auto count = CODESPY_TRY(stream.read_be<std::uint16_t>());
     while (count-- > 0) {
         const auto &name = constant_pool.read_utf(CODESPY_TRY(stream.read_be<std::uint16_t>()));
@@ -97,128 +97,13 @@ Result<void, ParseError, StreamError> iterate_attributes(Stream &stream, Constan
     return {};
 }
 
-Result<void, ParseError, StreamError> parse_code(Stream &stream, Visitor &visitor, ConstantPool &constant_pool) {
+static Result<void, ParseError, StreamError> parse_code(Stream &stream, ClassVisitor &visitor, ConstantPool &constant_pool) {
     const auto max_stack = CODESPY_TRY(stream.read_be<std::uint16_t>());
     const auto max_locals = CODESPY_TRY(stream.read_be<std::uint16_t>());
-    visitor.visit_code(max_stack, max_locals);
-
     const auto code_length = CODESPY_TRY(stream.read_be<std::uint32_t>());
-    const auto code_start = CODESPY_ASSUME(stream.seek(0, SeekMode::Add));
-    const auto code_end = CODESPY_ASSUME(stream.seek(0, SeekMode::Add)) + code_length;
 
-    // Collect jump targets.
-    while (CODESPY_ASSUME(stream.seek(0, SeekMode::Add)) < code_end) {
-        const auto current_offset =
-            static_cast<std::int32_t>(CODESPY_ASSUME(stream.seek(0, SeekMode::Add)) - code_start);
-        const auto opcode = static_cast<Opcode>(CODESPY_TRY(stream.read_byte()));
-
-        if ((opcode >= Opcode::IFEQ && opcode <= Opcode::IF_ACMPNE) || opcode == Opcode::GOTO ||
-            opcode == Opcode::IFNULL || opcode == Opcode::IFNONNULL) {
-            const auto true_offset = static_cast<std::int16_t>(CODESPY_TRY(stream.read_be<std::uint16_t>()));
-            visitor.visit_jump_target(static_cast<std::int32_t>(true_offset) + current_offset);
-            continue;
-        }
-
-        if (opcode == Opcode::TABLESWITCH) {
-            CODESPY_TRY(stream.seek(3 - (current_offset & 3u), SeekMode::Add));
-            visitor.visit_jump_target(CODESPY_TRY(stream.read_be<std::int32_t>()) + current_offset);
-            const auto low = CODESPY_TRY(stream.read_be<std::int32_t>());
-            const auto high = CODESPY_TRY(stream.read_be<std::int32_t>());
-            auto entry_count = high - low + 1;
-            while (entry_count-- > 0) {
-                visitor.visit_jump_target(CODESPY_TRY(stream.read_be<std::int32_t>()) + current_offset);
-            }
-            continue;
-        }
-
-        if (opcode == Opcode::LOOKUPSWITCH) {
-            CODESPY_TRY(stream.seek(3 - (current_offset & 3u), SeekMode::Add));
-            visitor.visit_jump_target(CODESPY_TRY(stream.read_be<std::int32_t>()) + current_offset);
-            auto entry_count = CODESPY_TRY(stream.read_be<std::int32_t>());
-            while (entry_count-- > 0) {
-                CODESPY_TRY(stream.read_be<std::int32_t>());
-                visitor.visit_jump_target(CODESPY_TRY(stream.read_be<std::int32_t>()) + current_offset);
-            }
-            continue;
-        }
-
-        if (opcode <= Opcode::DCONST_1) {
-            continue;
-        }
-        if (opcode >= Opcode::ILOAD_0 && opcode <= Opcode::SALOAD) {
-            continue;
-        }
-        if (opcode >= Opcode::ISTORE_0 && opcode <= Opcode::SASTORE) {
-            continue;
-        }
-        if (opcode >= Opcode::POP && opcode <= Opcode::LXOR) {
-            continue;
-        }
-        if (opcode >= Opcode::I2L && opcode <= Opcode::DCMPG) {
-            continue;
-        }
-        if (opcode >= Opcode::IRETURN && opcode <= Opcode::RETURN) {
-            continue;
-        }
-
-        if (opcode >= Opcode::ILOAD && opcode <= Opcode::ALOAD) {
-            CODESPY_TRY(stream.read_byte());
-            continue;
-        }
-        if (opcode >= Opcode::ISTORE && opcode <= Opcode::ASTORE) {
-            CODESPY_TRY(stream.read_byte());
-            continue;
-        }
-
-        if (opcode >= Opcode::GET_STATIC && opcode <= Opcode::INVOKE_INTERFACE) {
-            CODESPY_TRY(stream.read_be<std::uint16_t>());
-            if (opcode == Opcode::INVOKE_INTERFACE) {
-                CODESPY_TRY(stream.read_byte());
-                CODESPY_TRY(stream.read_byte());
-            }
-            continue;
-        }
-
-        if (opcode == Opcode::WIDE) {
-            const auto subopcode = static_cast<Opcode>(CODESPY_TRY(stream.read_byte()));
-            CODESPY_TRY(stream.read_be<std::int16_t>());
-            if (subopcode == Opcode::IINC) {
-                CODESPY_TRY(stream.read_be<std::int16_t>());
-            }
-            continue;
-        }
-
-        switch (opcode) {
-        case Opcode::ARRAYLENGTH:
-        case Opcode::ATHROW:
-        case Opcode::MONITORENTER:
-        case Opcode::MONITOREXIT:
-            continue;
-        case Opcode::BIPUSH:
-        case Opcode::LDC:
-        case Opcode::NEWARRAY:
-            CODESPY_TRY(stream.read_byte());
-            continue;
-        case Opcode::SIPUSH:
-        case Opcode::LDC_W:
-        case Opcode::LDC2_W:
-        case Opcode::IINC:
-        case Opcode::NEW:
-        case Opcode::ANEWARRAY:
-        case Opcode::CHECKCAST:
-        case Opcode::INSTANCEOF:
-            CODESPY_TRY(stream.read_be<std::uint16_t>());
-            continue;
-        case Opcode::MULTIANEWARRAY:
-            CODESPY_TRY(stream.read_be<std::uint16_t>());
-            CODESPY_TRY(stream.read_byte());
-            continue;
-        default:
-            break;
-        }
-        std::cerr << "Unknown opcode: " << static_cast<std::uint32_t>(opcode) << '\n';
-        return ParseError::UnknownOpcode;
-    }
+    auto buffer = FixedBuffer<std::uint8_t>::create_uninitialised(code_length);
+    CODESPY_TRY(stream.read(buffer.span()));
 
     auto exception_count = CODESPY_TRY(stream.read_be<std::uint16_t>());
     while (exception_count-- > 0) {
@@ -230,414 +115,12 @@ Result<void, ParseError, StreamError> parse_code(Stream &stream, Visitor &visito
         visitor.visit_exception_range(start_pc, end_pc, handler_pc, type_name);
     }
 
-    // Rewind to start.
-    CODESPY_TRY(stream.seek(code_start, SeekMode::Set));
-
-    while (CODESPY_ASSUME(stream.seek(0, SeekMode::Add)) < code_end) {
-        const auto current_offset =
-            static_cast<std::int32_t>(CODESPY_ASSUME(stream.seek(0, SeekMode::Add)) - code_start);
-        visitor.visit_offset(current_offset);
-        const auto opcode = static_cast<Opcode>(CODESPY_TRY(stream.read_byte()));
-
-        if (opcode >= Opcode::ICONST_M1 && opcode <= Opcode::ICONST_5) {
-            const auto value = static_cast<std::int32_t>(opcode - Opcode::ICONST_M1) - 1;
-            visitor.visit_constant(value);
-            continue;
-        }
-
-        // <x>load_<n>
-        if (opcode >= Opcode::ILOAD_0 && opcode <= Opcode::ALOAD_3) {
-            const auto local_index = (opcode - Opcode::ILOAD_0) & 0b11u;
-            const auto type = static_cast<BaseType>((opcode - Opcode::ILOAD_0) >> 2u);
-            visitor.visit_load(type, local_index);
-            continue;
-        }
-
-        // <x>load <n>
-        if (opcode >= Opcode::ILOAD && opcode <= Opcode::ALOAD) {
-            const auto local_index = CODESPY_TRY(stream.read_byte());
-            const auto type = static_cast<BaseType>(opcode - Opcode::ILOAD);
-            visitor.visit_load(type, local_index);
-            continue;
-        }
-
-        // <x>store_<n>
-        if (opcode >= Opcode::ISTORE_0 && opcode <= Opcode::ASTORE_3) {
-            const auto local_index = (opcode - Opcode::ISTORE_0) & 0b11u;
-            const auto type = static_cast<BaseType>((opcode - Opcode::ISTORE_0) >> 2u);
-            visitor.visit_store(type, local_index);
-            continue;
-        }
-
-        // <x>store <n>
-        if (opcode >= Opcode::ISTORE && opcode <= Opcode::ASTORE) {
-            const auto local_index = CODESPY_TRY(stream.read_byte());
-            const auto type = static_cast<BaseType>(opcode - Opcode::ISTORE);
-            visitor.visit_store(type, local_index);
-            continue;
-        }
-
-        // <x>aload
-        if (opcode >= Opcode::IALOAD && opcode <= Opcode::SALOAD) {
-            const auto type = static_cast<BaseType>(opcode - Opcode::IALOAD);
-            visitor.visit_array_load(type);
-            continue;
-        }
-
-        // <x>astore
-        if (opcode >= Opcode::IASTORE && opcode <= Opcode::SASTORE) {
-            const auto type = static_cast<BaseType>(opcode - Opcode::IASTORE);
-            visitor.visit_array_store(type);
-            continue;
-        }
-
-        // i2<x>
-        if (opcode >= Opcode::I2L && opcode < Opcode::L2I) {
-            // [0, 1, 2] -> [1, 2, 3]
-            const auto to_type = static_cast<BaseType>(opcode - Opcode::I2L + 1);
-            visitor.visit_cast(BaseType::Int, to_type);
-            continue;
-        }
-
-        // l2<x>
-        if (opcode >= Opcode::L2I && opcode < Opcode::F2I) {
-            // [0, 1, 2] -> [0, 2, 3]
-            Array map{0, 2, 3};
-            const auto to_type = static_cast<BaseType>(map[opcode - Opcode::L2I]);
-            visitor.visit_cast(BaseType::Long, to_type);
-            continue;
-        }
-
-        // f2<x>
-        if (opcode >= Opcode::F2I && opcode < Opcode::D2I) {
-            // [0, 1, 2] -> [0, 1, 3]
-            Array map{0, 1, 3};
-            const auto to_type = static_cast<BaseType>(map[opcode - Opcode::F2I]);
-            visitor.visit_cast(BaseType::Float, to_type);
-            continue;
-        }
-
-        // d2<x>
-        if (opcode >= Opcode::D2I && opcode < Opcode::I2B) {
-            // [0, 1, 2] -> [0, 1, 2]
-            const auto to_type = static_cast<BaseType>(opcode - Opcode::F2I);
-            visitor.visit_cast(BaseType::Double, to_type);
-            continue;
-        }
-
-        // <x>{add, sub, mul, div, rem, neg}
-        if (opcode >= Opcode::IADD && opcode <= Opcode::DNEG) {
-            const auto math_op = static_cast<MathOp>((opcode - Opcode::IADD) >> 2u);
-            const auto type = static_cast<BaseType>((opcode - Opcode::IADD) & 0b11u);
-            visitor.visit_math_op(type, math_op);
-            continue;
-        }
-
-        // Arithmetic and logical shifts.
-        if (opcode == Opcode::ISHL || opcode == Opcode::LSHL) {
-            const auto type = static_cast<BaseType>(opcode - Opcode::ISHL);
-            visitor.visit_math_op(type, MathOp::Shl);
-            continue;
-        }
-        if (opcode == Opcode::ISHR || opcode == Opcode::LSHR) {
-            const auto type = static_cast<BaseType>(opcode - Opcode::ISHR);
-            visitor.visit_math_op(type, MathOp::Shr);
-            continue;
-        }
-        if (opcode == Opcode::IUSHR || opcode == Opcode::LUSHR) {
-            const auto type = static_cast<BaseType>(opcode - Opcode::IUSHR);
-            visitor.visit_math_op(type, MathOp::UShr);
-            continue;
-        }
-
-        // Bitwise operators.
-        if (opcode == Opcode::IAND || opcode == Opcode::LAND) {
-            const auto type = static_cast<BaseType>(opcode - Opcode::IAND);
-            visitor.visit_math_op(type, MathOp::And);
-            continue;
-        }
-        if (opcode == Opcode::IOR || opcode == Opcode::LOR) {
-            const auto type = static_cast<BaseType>(opcode - Opcode::IOR);
-            visitor.visit_math_op(type, MathOp::Or);
-            continue;
-        }
-        if (opcode == Opcode::IXOR || opcode == Opcode::LXOR) {
-            const auto type = static_cast<BaseType>(opcode - Opcode::IXOR);
-            visitor.visit_math_op(type, MathOp::Xor);
-            continue;
-        }
-
-        // if<op>
-        if (opcode >= Opcode::IFEQ && opcode <= Opcode::IFLE) {
-            const auto compare_op = static_cast<CompareOp>(opcode - Opcode::IFEQ);
-            const auto true_offset = static_cast<std::int16_t>(CODESPY_TRY(stream.read_be<std::uint16_t>()));
-            visitor.visit_if_compare(compare_op, static_cast<std::int32_t>(true_offset) + current_offset,
-                                     CompareRhs::Zero);
-            continue;
-        }
-
-        // if_icmp<op>
-        if (opcode >= Opcode::IF_ICMPEQ && opcode <= Opcode::IF_ACMPNE) {
-            const auto compare_op = static_cast<CompareOp>(opcode - Opcode::IF_ICMPEQ);
-            const auto true_offset = static_cast<std::int16_t>(CODESPY_TRY(stream.read_be<std::uint16_t>()));
-            visitor.visit_if_compare(compare_op, static_cast<std::int32_t>(true_offset) + current_offset,
-                                     CompareRhs::Stack);
-            continue;
-        }
-
-        // <x>return
-        if (opcode >= Opcode::IRETURN && opcode < Opcode::RETURN) {
-            visitor.visit_return(static_cast<BaseType>(opcode - Opcode::IRETURN));
-            continue;
-        }
-
-        if (opcode == Opcode::ARRAYLENGTH || opcode == Opcode::ATHROW) {
-            const auto reference_op = static_cast<ReferenceOp>(opcode - Opcode::ARRAYLENGTH);
-            visitor.visit_reference_op(reference_op);
-            continue;
-        }
-
-        if (opcode == Opcode::CHECKCAST || opcode == Opcode::INSTANCEOF) {
-            const auto type_op = static_cast<TypeOp>(opcode - Opcode::CHECKCAST);
-            const auto type_name = constant_pool.read_string_like(CODESPY_TRY(stream.read_be<std::uint16_t>()));
-            visitor.visit_type_op(type_op, type_name);
-            continue;
-        }
-
-        if (opcode == Opcode::MONITORENTER || opcode == Opcode::MONITOREXIT) {
-            const auto monitor_op = static_cast<MonitorOp>(opcode - Opcode::MONITORENTER);
-            visitor.visit_monitor_op(monitor_op);
-            continue;
-        }
-
-        if (opcode >= Opcode::GET_STATIC && opcode <= Opcode::INVOKE_INTERFACE) {
-            const auto ref_index = CODESPY_TRY(stream.read_be<std::uint16_t>());
-            const auto [owner, name, descriptor] = constant_pool.read_ref(ref_index);
-            switch (opcode) {
-            case Opcode::GET_STATIC:
-                visitor.visit_get_field(owner, name, descriptor, false);
-                break;
-            case Opcode::PUT_STATIC:
-                visitor.visit_put_field(owner, name, descriptor, false);
-                break;
-            case Opcode::GET_FIELD:
-                visitor.visit_get_field(owner, name, descriptor, true);
-                break;
-            case Opcode::PUT_FIELD:
-                visitor.visit_put_field(owner, name, descriptor, true);
-                break;
-            case Opcode::INVOKE_VIRTUAL:
-                visitor.visit_invoke(InvokeKind::Virtual, owner, name, descriptor);
-                break;
-            case Opcode::INVOKE_SPECIAL:
-                visitor.visit_invoke(InvokeKind::Special, owner, name, descriptor);
-                break;
-            case Opcode::INVOKE_STATIC:
-                visitor.visit_invoke(InvokeKind::Static, owner, name, descriptor);
-                break;
-            case Opcode::INVOKE_INTERFACE:
-                CODESPY_TRY(stream.read_byte());
-                CODESPY_TRY(stream.read_byte());
-                visitor.visit_invoke(InvokeKind::Interface, owner, name, descriptor);
-                break;
-            default:
-                codespy::unreachable();
-            }
-            continue;
-        }
-
-        if (opcode >= Opcode::POP && opcode <= Opcode::SWAP) {
-            visitor.visit_stack_op(static_cast<StackOp>(opcode - Opcode::POP));
-            continue;
-        }
-
-        if (opcode == Opcode::TABLESWITCH) {
-            CODESPY_TRY(stream.seek(3 - (current_offset & 3u), SeekMode::Add));
-            const auto default_pc = CODESPY_TRY(stream.read_be<std::int32_t>()) + current_offset;
-            const auto low = static_cast<std::int32_t>(CODESPY_TRY(stream.read_be<std::uint32_t>()));
-            const auto high = static_cast<std::int32_t>(CODESPY_TRY(stream.read_be<std::uint32_t>()));
-            Vector<std::int32_t> table(high - low + 1);
-            for (auto &pc : table) {
-                pc = CODESPY_TRY(stream.read_be<std::int32_t>()) + current_offset;
-            }
-            visitor.visit_table_switch(low, high, default_pc, table.span());
-            continue;
-        }
-
-        if (opcode == Opcode::LOOKUPSWITCH) {
-            CODESPY_TRY(stream.seek(3 - (current_offset & 3u), SeekMode::Add));
-            const auto default_pc = CODESPY_TRY(stream.read_be<std::int32_t>()) + current_offset;
-            const auto entry_count = CODESPY_TRY(stream.read_be<std::int32_t>());
-            Vector<std::pair<std::int32_t, std::int32_t>> table(entry_count);
-            for (std::int32_t i = 0; i < entry_count; i++) {
-                const auto key = CODESPY_TRY(stream.read_be<std::int32_t>());
-                const auto pc = CODESPY_TRY(stream.read_be<std::int32_t>()) + current_offset;
-                table[i] = std::make_pair(key, pc);
-            }
-            visitor.visit_lookup_switch(default_pc, table.span());
-            continue;
-        }
-
-        if (opcode == Opcode::WIDE) {
-            const auto subopcode = static_cast<Opcode>(CODESPY_TRY(stream.read_byte()));
-            const auto local_index = CODESPY_TRY(stream.read_be<std::int16_t>());
-            if (subopcode >= Opcode::ILOAD && subopcode <= Opcode::ALOAD) {
-                const auto type = static_cast<BaseType>(subopcode - Opcode::ILOAD);
-                visitor.visit_load(type, local_index);
-            } else if (subopcode >= Opcode::ISTORE && subopcode <= Opcode::ASTORE) {
-                const auto type = static_cast<BaseType>(subopcode - Opcode::ISTORE);
-                visitor.visit_store(type, local_index);
-            } else if (subopcode == Opcode::IINC) {
-                const auto constant = CODESPY_TRY(stream.read_be<std::int16_t>());
-                visitor.visit_iinc(local_index, constant);
-            }
-            continue;
-        }
-
-        switch (opcode) {
-        case Opcode::ACONST_NULL:
-            visitor.visit_constant(NullReference{});
-            continue;
-        case Opcode::LCONST_0:
-            visitor.visit_constant(std::int64_t(0));
-            continue;
-        case Opcode::LCONST_1:
-            visitor.visit_constant(std::int64_t(1));
-            continue;
-        case Opcode::FCONST_0:
-            visitor.visit_constant(0.0f);
-            continue;
-        case Opcode::FCONST_1:
-            visitor.visit_constant(1.0f);
-            continue;
-        case Opcode::FCONST_2:
-            visitor.visit_constant(2.0f);
-            continue;
-        case Opcode::DCONST_0:
-            visitor.visit_constant(0.0);
-            continue;
-        case Opcode::DCONST_1:
-            visitor.visit_constant(1.0);
-            continue;
-        case Opcode::BIPUSH:
-            visitor.visit_constant(
-                static_cast<std::int32_t>(static_cast<std::int8_t>(CODESPY_TRY(stream.read_byte()))));
-            continue;
-        case Opcode::SIPUSH:
-            visitor.visit_constant(
-                static_cast<std::int32_t>(static_cast<std::int16_t>(CODESPY_TRY(stream.read_be<std::uint16_t>()))));
-            continue;
-        case Opcode::LDC:
-            visitor.visit_constant(constant_pool.read_constant(CODESPY_TRY(stream.read_byte())));
-            continue;
-        case Opcode::LDC_W:
-        case Opcode::LDC2_W:
-            visitor.visit_constant(constant_pool.read_constant(CODESPY_TRY(stream.read_be<std::uint16_t>())));
-            continue;
-        case Opcode::IINC: {
-            const auto local_index = CODESPY_TRY(stream.read_byte());
-            const auto constant = static_cast<std::int8_t>(CODESPY_TRY(stream.read_byte()));
-            visitor.visit_iinc(local_index, constant);
-            continue;
-        }
-        case Opcode::I2B:
-            visitor.visit_cast(BaseType::Int, BaseType::Byte);
-            continue;
-        case Opcode::I2C:
-            visitor.visit_cast(BaseType::Int, BaseType::Char);
-            continue;
-        case Opcode::I2S:
-            visitor.visit_cast(BaseType::Int, BaseType::Short);
-            continue;
-        case Opcode::LCMP:
-            visitor.visit_compare(BaseType::Long, false);
-            continue;
-        case Opcode::FCMPL:
-            visitor.visit_compare(BaseType::Float, false);
-            continue;
-        case Opcode::FCMPG:
-            visitor.visit_compare(BaseType::Float, true);
-            continue;
-        case Opcode::DCMPL:
-            visitor.visit_compare(BaseType::Double, false);
-            continue;
-        case Opcode::DCMPG:
-            visitor.visit_compare(BaseType::Double, true);
-            continue;
-        case Opcode::GOTO: {
-            const auto offset = static_cast<std::int16_t>(CODESPY_TRY(stream.read_be<std::uint16_t>()));
-            visitor.visit_goto(static_cast<std::int32_t>(offset) + current_offset);
-            continue;
-        }
-        case Opcode::RETURN:
-            visitor.visit_return(BaseType::Void);
-            continue;
-        case Opcode::NEW: {
-            const auto class_name = constant_pool.read_string_like(CODESPY_TRY(stream.read_be<std::uint16_t>()));
-            visitor.visit_new(codespy::format("L{};", class_name));
-            continue;
-        }
-        case Opcode::NEWARRAY:
-            switch (CODESPY_TRY(stream.read_byte())) {
-            case 4:
-                visitor.visit_new("[Z");
-                break;
-            case 5:
-                visitor.visit_new("[C");
-                break;
-            case 6:
-                visitor.visit_new("[F");
-                break;
-            case 7:
-                visitor.visit_new("[D");
-                break;
-            case 8:
-                visitor.visit_new("[B");
-                break;
-            case 9:
-                visitor.visit_new("[S");
-                break;
-            case 10:
-                visitor.visit_new("[I");
-                break;
-            case 11:
-                visitor.visit_new("[J");
-                break;
-            default:
-                return ParseError::InvalidArrayType;
-            }
-            continue;
-        case Opcode::ANEWARRAY: {
-            const auto class_name = constant_pool.read_string_like(CODESPY_TRY(stream.read_be<std::uint16_t>()));
-            visitor.visit_new(codespy::format("[L{};", class_name));
-            continue;
-        }
-        case Opcode::MULTIANEWARRAY: {
-            const auto descriptor = constant_pool.read_string_like(CODESPY_TRY(stream.read_be<std::uint16_t>()));
-            CODESPY_TRY(stream.read_byte());
-            visitor.visit_new(descriptor);
-            continue;
-        }
-        case Opcode::IFNULL:
-        case Opcode::IFNONNULL: {
-            const auto true_offset = static_cast<std::int16_t>(CODESPY_TRY(stream.read_be<std::uint16_t>()));
-            visitor.visit_if_compare(opcode == Opcode::IFNULL ? CompareOp::ReferenceEqual
-                                                              : CompareOp::ReferenceNotEqual,
-                                     static_cast<std::int32_t>(true_offset) + current_offset, CompareRhs::Null);
-            continue;
-        }
-        default:
-            break;
-        }
-        std::cerr << "Unknown opcode: " << static_cast<std::uint32_t>(opcode) << '\n';
-        return ParseError::UnknownOpcode;
-    }
+    CodeAttribute code(constant_pool, max_stack, max_locals, std::move(buffer));
+    visitor.visit_code(code);
     return {};
 }
 
-} // namespace
-
-Result<void, ParseError, StreamError> parse_class(Stream &stream, Visitor &visitor) {
+Result<void, ParseError, StreamError> parse_class(Stream &stream, ClassVisitor &visitor) {
     const auto magic = CODESPY_TRY(stream.read_be<std::uint32_t>());
     if (magic != 0xcafebabe) {
         return ParseError::BadMagic;
@@ -751,11 +234,6 @@ Result<void, ParseError, StreamError> parse_class(Stream &stream, Visitor &visit
 
                 CODESPY_TRY(parse_code(stream, visitor, constant_pool));
 
-                auto exception_count = CODESPY_TRY(stream.read_be<std::uint16_t>());
-                while (exception_count-- > 0) {
-                    CODESPY_TRY(stream.seek(8, SeekMode::Add));
-                }
-
                 CODESPY_TRY(
                     iterate_attributes(stream, constant_pool, [](StringView) -> Result<bool, ParseError, StreamError> {
                         return false;
@@ -782,6 +260,399 @@ Result<void, ParseError, StreamError> parse_class(Stream &stream, Visitor &visit
         return false;
     }));
     return {};
+}
+
+Result<std::int32_t, ParseError, StreamError> CodeAttribute::parse_inst(std::int32_t pc, CodeVisitor &visitor) {
+    SpanStream stream(m_buffer.span().subspan(pc));
+    const auto opcode = static_cast<Opcode>(CODESPY_TRY(stream.read_byte()));
+
+    if (opcode >= Opcode::ICONST_M1 && opcode <= Opcode::ICONST_5) {
+        const auto value = static_cast<std::int32_t>(opcode - Opcode::ICONST_M1) - 1;
+        visitor.visit_constant(value);
+        return 1;
+    }
+
+    // <x>load_<n>
+    if (opcode >= Opcode::ILOAD_0 && opcode <= Opcode::ALOAD_3) {
+        const auto local_index = (opcode - Opcode::ILOAD_0) & 0b11u;
+        const auto type = static_cast<BaseType>((opcode - Opcode::ILOAD_0) >> 2u);
+        visitor.visit_load(type, local_index);
+        return 1;
+    }
+
+    // <x>load <n>
+    if (opcode >= Opcode::ILOAD && opcode <= Opcode::ALOAD) {
+        const auto local_index = CODESPY_TRY(stream.read_byte());
+        const auto type = static_cast<BaseType>(opcode - Opcode::ILOAD);
+        visitor.visit_load(type, local_index);
+        return 2;
+    }
+
+    // <x>store_<n>
+    if (opcode >= Opcode::ISTORE_0 && opcode <= Opcode::ASTORE_3) {
+        const auto local_index = (opcode - Opcode::ISTORE_0) & 0b11u;
+        const auto type = static_cast<BaseType>((opcode - Opcode::ISTORE_0) >> 2u);
+        visitor.visit_store(type, local_index);
+        return 1;
+    }
+
+    // <x>store <n>
+    if (opcode >= Opcode::ISTORE && opcode <= Opcode::ASTORE) {
+        const auto local_index = CODESPY_TRY(stream.read_byte());
+        const auto type = static_cast<BaseType>(opcode - Opcode::ISTORE);
+        visitor.visit_store(type, local_index);
+        return 2;
+    }
+
+    // <x>aload
+    if (opcode >= Opcode::IALOAD && opcode <= Opcode::SALOAD) {
+        const auto type = static_cast<BaseType>(opcode - Opcode::IALOAD);
+        visitor.visit_array_load(type);
+        return 1;
+    }
+
+    // <x>astore
+    if (opcode >= Opcode::IASTORE && opcode <= Opcode::SASTORE) {
+        const auto type = static_cast<BaseType>(opcode - Opcode::IASTORE);
+        visitor.visit_array_store(type);
+        return 1;
+    }
+
+    // i2<x>
+    if (opcode >= Opcode::I2L && opcode < Opcode::L2I) {
+        // [0, 1, 2] -> [1, 2, 3]
+        const auto to_type = static_cast<BaseType>(opcode - Opcode::I2L + 1);
+        visitor.visit_cast(BaseType::Int, to_type);
+        return 1;
+    }
+
+    // l2<x>
+    if (opcode >= Opcode::L2I && opcode < Opcode::F2I) {
+        // [0, 1, 2] -> [0, 2, 3]
+        Array map{0, 2, 3};
+        const auto to_type = static_cast<BaseType>(map[opcode - Opcode::L2I]);
+        visitor.visit_cast(BaseType::Long, to_type);
+        return 1;
+    }
+
+    // f2<x>
+    if (opcode >= Opcode::F2I && opcode < Opcode::D2I) {
+        // [0, 1, 2] -> [0, 1, 3]
+        Array map{0, 1, 3};
+        const auto to_type = static_cast<BaseType>(map[opcode - Opcode::F2I]);
+        visitor.visit_cast(BaseType::Float, to_type);
+        return 1;
+    }
+
+    // d2<x>
+    if (opcode >= Opcode::D2I && opcode < Opcode::I2B) {
+        // [0, 1, 2] -> [0, 1, 2]
+        const auto to_type = static_cast<BaseType>(opcode - Opcode::F2I);
+        visitor.visit_cast(BaseType::Double, to_type);
+        return 1;
+    }
+
+    // <x>{add, sub, mul, div, rem, neg}
+    if (opcode >= Opcode::IADD && opcode <= Opcode::DNEG) {
+        const auto math_op = static_cast<MathOp>((opcode - Opcode::IADD) >> 2u);
+        const auto type = static_cast<BaseType>((opcode - Opcode::IADD) & 0b11u);
+        visitor.visit_math_op(type, math_op);
+        return 1;
+    }
+
+    // Arithmetic and logical shifts.
+    if (opcode == Opcode::ISHL || opcode == Opcode::LSHL) {
+        const auto type = static_cast<BaseType>(opcode - Opcode::ISHL);
+        visitor.visit_math_op(type, MathOp::Shl);
+        return 1;
+    }
+    if (opcode == Opcode::ISHR || opcode == Opcode::LSHR) {
+        const auto type = static_cast<BaseType>(opcode - Opcode::ISHR);
+        visitor.visit_math_op(type, MathOp::Shr);
+        return 1;
+    }
+    if (opcode == Opcode::IUSHR || opcode == Opcode::LUSHR) {
+        const auto type = static_cast<BaseType>(opcode - Opcode::IUSHR);
+        visitor.visit_math_op(type, MathOp::UShr);
+        return 1;
+    }
+
+    // Bitwise operators.
+    if (opcode == Opcode::IAND || opcode == Opcode::LAND) {
+        const auto type = static_cast<BaseType>(opcode - Opcode::IAND);
+        visitor.visit_math_op(type, MathOp::And);
+        return 1;
+    }
+    if (opcode == Opcode::IOR || opcode == Opcode::LOR) {
+        const auto type = static_cast<BaseType>(opcode - Opcode::IOR);
+        visitor.visit_math_op(type, MathOp::Or);
+        return 1;
+    }
+    if (opcode == Opcode::IXOR || opcode == Opcode::LXOR) {
+        const auto type = static_cast<BaseType>(opcode - Opcode::IXOR);
+        visitor.visit_math_op(type, MathOp::Xor);
+        return 1;
+    }
+
+    // if<op>
+    if (opcode >= Opcode::IFEQ && opcode <= Opcode::IFLE) {
+        const auto compare_op = static_cast<CompareOp>(opcode - Opcode::IFEQ);
+        const auto true_offset = static_cast<std::int16_t>(CODESPY_TRY(stream.read_be<std::uint16_t>()));
+        visitor.visit_if_compare(compare_op, static_cast<std::int32_t>(true_offset) + pc, CompareRhs::Zero);
+        return 3;
+    }
+
+    // if_icmp<op>
+    if (opcode >= Opcode::IF_ICMPEQ && opcode <= Opcode::IF_ACMPNE) {
+        const auto compare_op = static_cast<CompareOp>(opcode - Opcode::IF_ICMPEQ);
+        const auto true_offset = static_cast<std::int16_t>(CODESPY_TRY(stream.read_be<std::uint16_t>()));
+        visitor.visit_if_compare(compare_op, static_cast<std::int32_t>(true_offset) + pc, CompareRhs::Stack);
+        return 3;
+    }
+
+    // <x>return
+    if (opcode >= Opcode::IRETURN && opcode < Opcode::RETURN) {
+        visitor.visit_return(static_cast<BaseType>(opcode - Opcode::IRETURN));
+        return 1;
+    }
+
+    if (opcode == Opcode::ARRAYLENGTH || opcode == Opcode::ATHROW) {
+        const auto reference_op = static_cast<ReferenceOp>(opcode - Opcode::ARRAYLENGTH);
+        visitor.visit_reference_op(reference_op);
+        return 1;
+    }
+
+    if (opcode == Opcode::CHECKCAST || opcode == Opcode::INSTANCEOF) {
+        const auto type_op = static_cast<TypeOp>(opcode - Opcode::CHECKCAST);
+        const auto type_name = m_constant_pool.read_string_like(CODESPY_TRY(stream.read_be<std::uint16_t>()));
+        visitor.visit_type_op(type_op, type_name);
+        return 3;
+    }
+
+    if (opcode == Opcode::MONITORENTER || opcode == Opcode::MONITOREXIT) {
+        const auto monitor_op = static_cast<MonitorOp>(opcode - Opcode::MONITORENTER);
+        visitor.visit_monitor_op(monitor_op);
+        return 1;
+    }
+
+    if (opcode >= Opcode::GET_STATIC && opcode <= Opcode::INVOKE_INTERFACE) {
+        const auto ref_index = CODESPY_TRY(stream.read_be<std::uint16_t>());
+        const auto [owner, name, descriptor] = m_constant_pool.read_ref(ref_index);
+        switch (opcode) {
+        case Opcode::GET_STATIC:
+            visitor.visit_get_field(owner, name, descriptor, false);
+            return 3;
+        case Opcode::PUT_STATIC:
+            visitor.visit_put_field(owner, name, descriptor, false);
+            return 3;
+        case Opcode::GET_FIELD:
+            visitor.visit_get_field(owner, name, descriptor, true);
+            return 3;
+        case Opcode::PUT_FIELD:
+            visitor.visit_put_field(owner, name, descriptor, true);
+            return 3;
+        case Opcode::INVOKE_VIRTUAL:
+            visitor.visit_invoke(InvokeKind::Virtual, owner, name, descriptor);
+            return 3;
+        case Opcode::INVOKE_SPECIAL:
+            visitor.visit_invoke(InvokeKind::Special, owner, name, descriptor);
+            return 3;
+        case Opcode::INVOKE_STATIC:
+            visitor.visit_invoke(InvokeKind::Static, owner, name, descriptor);
+            return 3;
+        case Opcode::INVOKE_INTERFACE:
+            CODESPY_TRY(stream.read_byte());
+            CODESPY_TRY(stream.read_byte());
+            visitor.visit_invoke(InvokeKind::Interface, owner, name, descriptor);
+            return 5;
+        default:
+            codespy::unreachable();
+        }
+    }
+
+    if (opcode >= Opcode::POP && opcode <= Opcode::SWAP) {
+        visitor.visit_stack_op(static_cast<StackOp>(opcode - Opcode::POP));
+        return 1;
+    }
+
+    if (opcode == Opcode::TABLESWITCH) {
+        CODESPY_TRY(stream.seek(3 - (pc & 3u), SeekMode::Add));
+        const auto default_pc = CODESPY_TRY(stream.read_be<std::int32_t>()) + pc;
+        const auto low = static_cast<std::int32_t>(CODESPY_TRY(stream.read_be<std::uint32_t>()));
+        const auto high = static_cast<std::int32_t>(CODESPY_TRY(stream.read_be<std::uint32_t>()));
+        Vector<std::int32_t> table(high - low + 1);
+        for (auto &case_pc : table) {
+            case_pc = CODESPY_TRY(stream.read_be<std::int32_t>()) + pc;
+        }
+        visitor.visit_table_switch(low, high, default_pc, table.span());
+        return static_cast<std::int32_t>(CODESPY_ASSUME(stream.seek(0, SeekMode::Add)));
+    }
+
+    if (opcode == Opcode::LOOKUPSWITCH) {
+        CODESPY_TRY(stream.seek(3 - (pc & 3u), SeekMode::Add));
+        const auto default_pc = CODESPY_TRY(stream.read_be<std::int32_t>()) + pc;
+        const auto entry_count = CODESPY_TRY(stream.read_be<std::int32_t>());
+        Vector<std::pair<std::int32_t, std::int32_t>> table(entry_count);
+        for (std::int32_t i = 0; i < entry_count; i++) {
+            const auto key = CODESPY_TRY(stream.read_be<std::int32_t>());
+            const auto case_pc = CODESPY_TRY(stream.read_be<std::int32_t>()) + pc;
+            table[i] = std::make_pair(key, case_pc);
+        }
+        visitor.visit_lookup_switch(default_pc, table.span());
+        return static_cast<std::int32_t>(CODESPY_ASSUME(stream.seek(0, SeekMode::Add)));
+    }
+
+    if (opcode == Opcode::WIDE) {
+        const auto subopcode = static_cast<Opcode>(CODESPY_TRY(stream.read_byte()));
+        const auto local_index = CODESPY_TRY(stream.read_be<std::int16_t>());
+        if (subopcode >= Opcode::ILOAD && subopcode <= Opcode::ALOAD) {
+            const auto type = static_cast<BaseType>(subopcode - Opcode::ILOAD);
+            visitor.visit_load(type, local_index);
+        } else if (subopcode >= Opcode::ISTORE && subopcode <= Opcode::ASTORE) {
+            const auto type = static_cast<BaseType>(subopcode - Opcode::ISTORE);
+            visitor.visit_store(type, local_index);
+        } else if (subopcode == Opcode::IINC) {
+            const auto constant = CODESPY_TRY(stream.read_be<std::int16_t>());
+            visitor.visit_iinc(local_index, constant);
+        }
+        return static_cast<std::int32_t>(CODESPY_ASSUME(stream.seek(0, SeekMode::Add)));
+    }
+
+    switch (opcode) {
+    case Opcode::ACONST_NULL:
+        visitor.visit_constant(NullReference{});
+        return 1;
+    case Opcode::LCONST_0:
+        visitor.visit_constant(std::int64_t(0));
+        return 1;
+    case Opcode::LCONST_1:
+        visitor.visit_constant(std::int64_t(1));
+        return 1;
+    case Opcode::FCONST_0:
+        visitor.visit_constant(0.0f);
+        return 1;
+    case Opcode::FCONST_1:
+        visitor.visit_constant(1.0f);
+        return 1;
+    case Opcode::FCONST_2:
+        visitor.visit_constant(2.0f);
+        return 1;
+    case Opcode::DCONST_0:
+        visitor.visit_constant(0.0);
+        return 1;
+    case Opcode::DCONST_1:
+        visitor.visit_constant(1.0);
+        return 1;
+    case Opcode::BIPUSH:
+        visitor.visit_constant(static_cast<std::int32_t>(static_cast<std::int8_t>(CODESPY_TRY(stream.read_byte()))));
+        return 2;
+    case Opcode::SIPUSH:
+        visitor.visit_constant(
+            static_cast<std::int32_t>(static_cast<std::int16_t>(CODESPY_TRY(stream.read_be<std::uint16_t>()))));
+        return 3;
+    case Opcode::LDC:
+        visitor.visit_constant(m_constant_pool.read_constant(CODESPY_TRY(stream.read_byte())));
+        return 2;
+    case Opcode::LDC_W:
+    case Opcode::LDC2_W:
+        visitor.visit_constant(m_constant_pool.read_constant(CODESPY_TRY(stream.read_be<std::uint16_t>())));
+        return 3;
+    case Opcode::IINC: {
+        const auto local_index = CODESPY_TRY(stream.read_byte());
+        const auto constant = static_cast<std::int8_t>(CODESPY_TRY(stream.read_byte()));
+        visitor.visit_iinc(local_index, constant);
+        return 3;
+    }
+    case Opcode::I2B:
+        visitor.visit_cast(BaseType::Int, BaseType::Byte);
+        return 1;
+    case Opcode::I2C:
+        visitor.visit_cast(BaseType::Int, BaseType::Char);
+        return 1;
+    case Opcode::I2S:
+        visitor.visit_cast(BaseType::Int, BaseType::Short);
+        return 1;
+    case Opcode::LCMP:
+        visitor.visit_compare(BaseType::Long, false);
+        return 1;
+    case Opcode::FCMPL:
+        visitor.visit_compare(BaseType::Float, false);
+        return 1;
+    case Opcode::FCMPG:
+        visitor.visit_compare(BaseType::Float, true);
+        return 1;
+    case Opcode::DCMPL:
+        visitor.visit_compare(BaseType::Double, false);
+        return 1;
+    case Opcode::DCMPG:
+        visitor.visit_compare(BaseType::Double, true);
+        return 1;
+    case Opcode::GOTO: {
+        const auto offset = static_cast<std::int16_t>(CODESPY_TRY(stream.read_be<std::uint16_t>()));
+        visitor.visit_goto(static_cast<std::int32_t>(offset) + pc);
+        return 3;
+    }
+    case Opcode::RETURN:
+        visitor.visit_return(BaseType::Void);
+        return 1;
+    case Opcode::NEW: {
+        const auto class_name = m_constant_pool.read_string_like(CODESPY_TRY(stream.read_be<std::uint16_t>()));
+        visitor.visit_new(codespy::format("L{};", class_name));
+        return 3;
+    }
+    case Opcode::NEWARRAY:
+        switch (CODESPY_TRY(stream.read_byte())) {
+        case 4:
+            visitor.visit_new("[Z");
+            break;
+        case 5:
+            visitor.visit_new("[C");
+            break;
+        case 6:
+            visitor.visit_new("[F");
+            break;
+        case 7:
+            visitor.visit_new("[D");
+            break;
+        case 8:
+            visitor.visit_new("[B");
+            break;
+        case 9:
+            visitor.visit_new("[S");
+            break;
+        case 10:
+            visitor.visit_new("[I");
+            break;
+        case 11:
+            visitor.visit_new("[J");
+            break;
+        default:
+            return ParseError::InvalidArrayType;
+        }
+        return 2;
+    case Opcode::ANEWARRAY: {
+        const auto class_name = m_constant_pool.read_string_like(CODESPY_TRY(stream.read_be<std::uint16_t>()));
+        visitor.visit_new(codespy::format("[L{};", class_name));
+        return 3;
+    }
+    case Opcode::MULTIANEWARRAY: {
+        const auto descriptor = m_constant_pool.read_string_like(CODESPY_TRY(stream.read_be<std::uint16_t>()));
+        CODESPY_TRY(stream.read_byte());
+        visitor.visit_new(descriptor);
+        return 4;
+    }
+    case Opcode::IFNULL:
+    case Opcode::IFNONNULL: {
+        const auto true_offset = static_cast<std::int16_t>(CODESPY_TRY(stream.read_be<std::uint16_t>()));
+        visitor.visit_if_compare(opcode == Opcode::IFNULL ? CompareOp::ReferenceEqual : CompareOp::ReferenceNotEqual,
+                                 static_cast<std::int32_t>(true_offset) + pc, CompareRhs::Null);
+        return 3;
+    }
+    default:
+        break;
+    }
+    std::cerr << "Unknown opcode: " << static_cast<std::uint32_t>(opcode) << '\n';
+    return ParseError::UnknownOpcode;
 }
 
 } // namespace codespy::bc

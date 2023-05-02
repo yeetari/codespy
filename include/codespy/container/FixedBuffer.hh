@@ -1,5 +1,6 @@
 #pragma once
 
+#include <codespy/support/Span.hh>
 #include <codespy/support/Utility.hh>
 
 #include <cstddef>

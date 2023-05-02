@@ -1,5 +1,6 @@
 #include <codespy/bytecode/Dumper.hh>
 
+#include <codespy/bytecode/ClassFile.hh>
 #include <codespy/support/Print.hh>
 
 namespace codespy::bc {
@@ -55,15 +56,16 @@ void Dumper::visit_method(AccessFlags, StringView name, StringView descriptor) {
     codespy::println("\nmethod {} {}", name, descriptor);
 }
 
-void Dumper::visit_code(std::uint16_t, std::uint16_t) {}
+void Dumper::visit_code(CodeAttribute &code) {
+    for (std::int32_t pc = 0; pc < code.code_end();) {
+        codespy::print("    {d4 }: ", pc);
+        pc += CODESPY_EXPECT(code.parse_inst(pc, *this));
+    }
+}
 
 void Dumper::visit_exception_range(std::int32_t start_pc, std::int32_t end_pc, std::int32_t handler_pc,
                                    StringView type_name) {
     codespy::println("{}: {} -> {} handled by {}", type_name, start_pc, end_pc, handler_pc);
-}
-
-void Dumper::visit_offset(std::int32_t offset) {
-    codespy::print("    {d4 }: ", offset);
 }
 
 void Dumper::visit_constant(Constant constant) {
@@ -336,7 +338,8 @@ void Dumper::visit_if_compare(CompareOp compare_op, std::int32_t true_offset, Co
     }
 }
 
-void Dumper::visit_table_switch(std::int32_t low, std::int32_t high, std::int32_t default_pc, Span<std::int32_t> table) {
+void Dumper::visit_table_switch(std::int32_t low, std::int32_t high, std::int32_t default_pc,
+                                Span<std::int32_t> table) {
     codespy::println("tableswitch");
     for (std::int32_t i = low; i <= high; i++) {
         codespy::println("            {}: {}", i, table[i - low]);

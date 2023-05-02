@@ -5,6 +5,7 @@
 #include <codespy/support/String.hh>
 #include <codespy/support/UniquePtr.hh>
 
+#include <deque>
 #include <unordered_map>
 
 namespace codespy::ir {
@@ -20,11 +21,12 @@ class Value;
 
 namespace codespy::bc {
 
-class Frontend : public Visitor {
+class Frontend : public ClassVisitor, public CodeVisitor {
     using Stack = Vector<ir::Value *, std::uint16_t>;
     struct BlockInfo {
         ir::BasicBlock *block{nullptr};
         Stack entry_stack;
+        bool visited{false};
     };
 
 private:
@@ -35,6 +37,7 @@ private:
     std::unordered_map<std::int32_t, BlockInfo> m_block_map;
     std::unordered_map<String, ir::Function *> m_function_map;
     std::unordered_map<std::uint16_t, ir::Value *> m_local_map;
+    std::deque<std::int32_t> m_queue;
     Stack m_stack;
 
     ir::Type *lower_base_type(BaseType base_type);
@@ -60,11 +63,9 @@ public:
     void visit_field(StringView name, StringView descriptor) override;
     void visit_method(AccessFlags access_flags, StringView name, StringView descriptor) override;
 
-    void visit_code(std::uint16_t max_stack, std::uint16_t max_locals) override;
-    void visit_jump_target(std::int32_t offset) override;
+    void visit_code(CodeAttribute &code) override;
     void visit_exception_range(std::int32_t start_pc, std::int32_t end_pc, std::int32_t handler_pc,
                                StringView type_name) override;
-    void visit_offset(std::int32_t offset) override;
     void visit_constant(Constant constant) override;
     void visit_load(BaseType type, std::uint8_t local_index) override;
     void visit_store(BaseType type, std::uint8_t local_index) override;

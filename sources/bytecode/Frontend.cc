@@ -1,5 +1,6 @@
 #include <codespy/bytecode/Frontend.hh>
 
+#include <codespy/bytecode/ClassFile.hh>
 #include <codespy/ir/BasicBlock.hh>
 #include <codespy/ir/Constant.hh>
 #include <codespy/ir/Context.hh>
@@ -125,12 +126,28 @@ ir::Function *Frontend::materialise_function(StringView owner, StringView name, 
 }
 
 ir::BasicBlock *Frontend::materialise_block(std::int32_t offset) {
+    // TODO: Could potentially emit PHIs straight away instead of localising?
     auto &slot = m_block_map.at(offset);
     if (slot.block == nullptr) {
         assert(slot.entry_stack.empty());
         slot.block = m_function->append_block();
-        slot.entry_stack.ensure_size(m_stack.size());
-        std::memcpy(slot.entry_stack.data(), m_stack.data(), m_stack.size_bytes());
+        if (!m_stack.empty()) {
+            // Localise stack.
+            slot.entry_stack.ensure_capacity(m_stack.size());
+            for (auto *value : m_stack) {
+                auto *local = m_function->append_local(value->type());
+                m_block->append<ir::StoreInst>(local, value);
+                slot.entry_stack.push(local);
+            }
+        }
+        m_queue.push_back(offset);
+    } else {
+        assert(m_stack.size() <= slot.entry_stack.size());
+        const auto difference = slot.entry_stack.size() - m_stack.size();
+        for (std::uint16_t i = 0; i < m_stack.size(); i++) {
+            auto *local = slot.entry_stack[i + difference];
+            m_block->append<ir::StoreInst>(local, m_stack[i]);
+        }
     }
     return slot.block;
 }
@@ -163,41 +180,82 @@ void Frontend::visit_method(AccessFlags access_flags, StringView name, StringVie
     m_function = materialise_function(m_this_name, name, descriptor, this_type);
 }
 
-void Frontend::visit_code(std::uint16_t max_stack, std::uint16_t max_locals) {
-    m_stack.ensure_capacity(max_stack);
-    m_local_map.reserve(max_locals);
+void Frontend::visit_code(CodeAttribute &code) {
+    m_stack.ensure_capacity(code.max_stack());
+    m_local_map.reserve(code.max_locals());
 
-    // Create entry block.
-    m_block = m_function->append_block();
-    m_block_map.emplace(0, BlockInfo{m_block, {}});
-}
+    struct JumpTargetVisitor final : public CodeVisitor {
+        std::unordered_map<std::int32_t, BlockInfo> &block_map;
 
-void Frontend::visit_jump_target(std::int32_t offset) {
-    m_block_map[offset];
+        JumpTargetVisitor(std::unordered_map<std::int32_t, BlockInfo> &block_map) : block_map(block_map) {}
+
+        void visit_goto(std::int32_t offset) override { block_map[offset]; }
+        void visit_if_compare(CompareOp, std::int32_t true_offset, CompareRhs) override { block_map[true_offset]; }
+        void visit_table_switch(std::int32_t, std::int32_t, std::int32_t default_pc,
+                                Span<std::int32_t> table) override {
+            block_map[default_pc];
+            for (std::int32_t pc : table) {
+                block_map[pc];
+            }
+        }
+        void visit_lookup_switch(std::int32_t default_pc, Span<std::pair<std::int32_t, std::int32_t>> table) override {
+            block_map[default_pc];
+            for (const auto &[key, case_pc] : table) {
+                block_map[case_pc];
+            }
+        }
+    } visitor(m_block_map);
+    for (std::int32_t pc = 0; pc < code.code_end();) {
+        pc += CODESPY_EXPECT(code.parse_inst(pc, visitor));
+    }
+
+    m_queue.push_front(0);
+    while (!m_queue.empty()) {
+        auto pc = m_queue.front();
+        m_queue.pop_front();
+
+        auto &info = m_block_map[pc];
+        if (std::exchange(info.visited, true)) {
+            continue;
+        }
+
+        assert(pc == 0 || m_block->has_terminator());
+        m_block = materialise_block(pc);
+
+        // Clear stack; materialise_block will have localised any stack variables into the entry stack.
+        m_stack.clear();
+
+        // Load entry stack.
+        const auto &entry_stack = m_block_map.at(pc).entry_stack;
+        for (auto *local : entry_stack) {
+            auto *value = m_block->append<ir::LoadInst>(local->type(), local);
+            m_stack.push(value);
+        }
+
+        do {
+            pc += CODESPY_EXPECT(code.parse_inst(pc, *this));
+        } while (!m_block->has_terminator() && !m_block_map.contains(pc));
+
+        // Insert immediate jump if needed.
+        if (!m_block->has_terminator()) {
+            m_block->append<ir::BranchInst>(materialise_block(pc));
+        }
+
+        if (auto *branch = m_block->insts().last()->as<ir::BranchInst>()) {
+            if (branch->is_conditional()) {
+                m_block_map[pc].block = branch->false_target();
+                m_queue.push_back(pc);
+            }
+        }
+    }
 }
 
 void Frontend::visit_exception_range(std::int32_t, std::int32_t, std::int32_t handler_pc, StringView type_name) {
-    // TODO: catch instruction.
+    // TODO: catch instruction, not right at all.
     auto &handler_info = m_block_map[handler_pc];
-    assert(handler_info.block == nullptr);
     handler_info.block = m_function->append_block();
     handler_info.entry_stack.push(handler_info.block->append<ir::NewInst>(m_context->reference_type(type_name)));
-}
-
-void Frontend::visit_offset(std::int32_t offset) {
-    // Check whether this is a jump target and create an immediate jump if needed.
-    if (offset != 0 && m_block_map.contains(offset)) {
-        auto *target = materialise_block(offset);
-        if (!m_block->has_terminator()) {
-            m_block->append<ir::BranchInst>(target);
-        }
-        m_block = target;
-
-        assert(m_stack.empty());
-        for (auto *value : m_block_map.at(offset).entry_stack) {
-            m_stack.push(value);
-        }
-    }
+    m_queue.push_back(handler_pc);
 }
 
 void Frontend::visit_constant(Constant constant) {
@@ -393,9 +451,12 @@ void Frontend::visit_stack_op(StackOp stack_op) {
     case StackOp::Pop:
         m_stack.pop();
         break;
-    case StackOp::Dup:
-        m_stack.push(m_stack.last());
+    case StackOp::Dup: {
+        // TODO: vec.push(vec.last()) unsafe.
+        ir::Value *last = m_stack.last();
+        m_stack.push(last);
         break;
+    }
     default:
         assert(false);
     }
@@ -416,6 +477,9 @@ void Frontend::visit_iinc(std::uint8_t local_index, std::int32_t increment) {
 
 void Frontend::visit_goto(std::int32_t offset) {
     m_block->append<ir::BranchInst>(materialise_block(offset));
+
+    // Fully clear the stack after a GOTO, there is no fallthrough to the next instruction.
+    m_stack.clear();
 }
 
 static ir::CompareOp lower_compare_op(CompareOp compare_op) {
@@ -452,7 +516,6 @@ void Frontend::visit_if_compare(CompareOp compare_op, std::int32_t true_offset, 
     auto *true_target = materialise_block(true_offset);
     auto *compare = m_block->append<ir::CompareInst>(lower_compare_op(compare_op), lhs, rhs);
     m_block->append<ir::BranchInst>(true_target, false_target, compare);
-    m_block = false_target;
 }
 
 template <typename F>
