@@ -236,12 +236,18 @@ void Frontend::visit_store(BaseType, std::uint8_t local_index) {
     m_block->append<ir::StoreInst>(materialise_local(local_index), value);
 }
 
-void Frontend::visit_array_load(BaseType) {
+void Frontend::visit_array_load(BaseType base_type) {
     ir::Value *index = m_stack.take_last();
     ir::Value *array_ref = m_stack.take_last();
-    assert(array_ref->type()->kind() == ir::TypeKind::Array);
-    ir::Type *element_type = static_cast<ir::ArrayType *>(array_ref->type())->element_type();
-    // TODO: Check element_type compatible with base_type.
+
+    ir::Type *element_type;
+    if (array_ref->type()->kind() == ir::TypeKind::Array) {
+        // We can get exact type.
+        element_type = static_cast<ir::ArrayType *>(array_ref->type())->element_type();
+    } else {
+        // Otherwise, fallback to base_type (e.g. if array_ref was loaded from a local).
+        element_type = lower_base_type(base_type);
+    }
     m_stack.push(m_block->append<ir::LoadArrayInst>(element_type, array_ref, index));
 }
 
