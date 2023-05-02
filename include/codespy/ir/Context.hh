@@ -20,10 +20,21 @@ class Context {
     std::unordered_map<String, UniquePtr<ReferenceType>> m_reference_types;
     Vector<UniquePtr<FunctionType>> m_function_types;
 
+    Value m_constant_null;
+    Vector<UniquePtr<ConstantDouble>> m_double_constants;
+    Vector<UniquePtr<ConstantFloat>> m_float_constants;
     Vector<UniquePtr<ConstantInt>> m_int_constants;
     std::unordered_map<String, UniquePtr<ConstantString>> m_string_constants;
 
 public:
+    Context();
+    Context(const Context &) = delete;
+    Context(Context &&) = delete;
+    ~Context() = default;
+
+    Context &operator=(const Context &) = delete;
+    Context &operator=(Context &&) = delete;
+
     Type *any_type() { return &m_any_type; }
     Type *label_type() { return &m_label_type; }
     Type *float_type() { return &m_float_type; }
@@ -35,6 +46,9 @@ public:
     IntType *int_type(std::uint16_t bit_width);
     ReferenceType *reference_type(String class_name);
 
+    Value *constant_null() { return &m_constant_null; }
+    ConstantDouble *constant_double(double value);
+    ConstantFloat *constant_float(float value);
     ConstantInt *constant_int(IntType *type, std::int64_t value);
     ConstantString *constant_string(String value);
 };

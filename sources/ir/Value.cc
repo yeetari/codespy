@@ -47,8 +47,16 @@ void Value::destroy() {
     case ValueKind::BasicBlock:
         delete as<BasicBlock>();
         break;
+    case ValueKind::ConstantDouble:
+        delete as<ConstantDouble>();
+        break;
+    case ValueKind::ConstantFloat:
+        delete as<ConstantFloat>();
+        break;
     case ValueKind::ConstantInt:
         delete as<ConstantInt>();
+        break;
+    case ValueKind::ConstantNull:
         break;
     case ValueKind::ConstantString:
         delete as<ConstantString>();

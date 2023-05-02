@@ -195,14 +195,18 @@ void Frontend::visit_offset(std::int32_t offset) {
 }
 
 void Frontend::visit_constant(Constant constant) {
-    if (constant.has<std::int32_t>()) {
+    if (constant.has<NullReference>()) {
+        m_stack.push(m_context->constant_null());
+    } else if (constant.has<std::int32_t>()) {
         m_stack.push(m_context->constant_int(m_context->int_type(32), constant.get<std::int32_t>()));
     } else if (constant.has<std::int64_t>()) {
         m_stack.push(m_context->constant_int(m_context->int_type(64), constant.get<std::int64_t>()));
+    } else if (constant.has<float>()) {
+        m_stack.push(m_context->constant_float(constant.get<float>()));
+    } else if (constant.has<double>()) {
+        m_stack.push(m_context->constant_double(constant.get<double>()));
     } else if (constant.has<StringView>()) {
         m_stack.push(m_context->constant_string(constant.get<StringView>()));
-    } else {
-        assert(false);
     }
 }
 

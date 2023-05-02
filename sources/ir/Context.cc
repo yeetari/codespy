@@ -2,6 +2,8 @@
 
 namespace codespy::ir {
 
+Context::Context() : m_constant_null(ValueKind::ConstantNull, reference_type("java/lang/Object")) {}
+
 ArrayType *Context::array_type(Type *element_type) {
     if (!m_array_types.contains(element_type)) {
         m_array_types.emplace(element_type, codespy::make_unique<ArrayType>(element_type));
@@ -40,6 +42,24 @@ ReferenceType *Context::reference_type(String class_name) {
         m_reference_types.emplace(class_name, codespy::make_unique<ReferenceType>(class_name));
     }
     return m_reference_types.at(class_name).ptr();
+}
+
+ConstantDouble *Context::constant_double(double value) {
+    for (const auto &constant : m_double_constants) {
+        if (constant->value() == value) {
+            return constant.ptr();
+        }
+    }
+    return m_double_constants.emplace(new ConstantDouble(&m_double_type, value)).ptr();
+}
+
+ConstantFloat *Context::constant_float(float value) {
+    for (const auto &constant : m_float_constants) {
+        if (constant->value() == value) {
+            return constant.ptr();
+        }
+    }
+    return m_float_constants.emplace(new ConstantFloat(&m_float_type, value)).ptr();
 }
 
 ConstantInt *Context::constant_int(IntType *type, std::int64_t value) {

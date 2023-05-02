@@ -78,6 +78,15 @@ String Dumper::value_string(Value *value) {
         }
         return codespy::format("L{}", m_block_map.at(block));
     }
+    if (value->kind() == ValueKind::ConstantNull) {
+        return codespy::format("{} null", type_string(value->type()));
+    }
+    if (auto *constant = value->as<ConstantDouble>()) {
+        return codespy::format("{} ${}", type_string(constant->type()), constant->value());
+    }
+    if (auto *constant = value->as<ConstantFloat>()) {
+        return codespy::format("{} ${}", type_string(constant->type()), constant->value());
+    }
     if (auto *constant = value->as<ConstantInt>()) {
         return codespy::format("{} ${}", type_string(constant->type()), constant->value());
     }

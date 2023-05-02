@@ -23,7 +23,10 @@ public:
 enum class ValueKind : std::uint8_t {
     Argument,
     BasicBlock,
+    ConstantDouble,
+    ConstantFloat,
     ConstantInt,
+    ConstantNull,
     ConstantString,
     Function,
     Instruction,
@@ -34,6 +37,9 @@ template <typename T>
 concept HasValueKind = requires(T) { static_cast<ValueKind>(T::k_kind); };
 
 class Value {
+    friend class Context;
+
+private:
     Use *m_use_list{nullptr};
     Type *m_type{nullptr};
     const ValueKind m_kind;

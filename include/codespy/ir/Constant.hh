@@ -7,6 +7,28 @@
 
 namespace codespy::ir {
 
+class ConstantDouble : public Value {
+    const double m_value;
+
+public:
+    static constexpr auto k_kind = ValueKind::ConstantDouble;
+
+    ConstantDouble(Type *type, double value) : Value(k_kind, type), m_value(value) {}
+
+    double value() const { return m_value; }
+};
+
+class ConstantFloat : public Value {
+    const float m_value;
+
+public:
+    static constexpr auto k_kind = ValueKind::ConstantFloat;
+
+    ConstantFloat(Type *type, float value) : Value(k_kind, type), m_value(value) {}
+
+    float value() const { return m_value; }
+};
+
 class ConstantInt : public Value {
     const std::int64_t m_value;
 
