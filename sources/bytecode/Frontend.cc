@@ -109,11 +109,17 @@ ir::FunctionType *Frontend::parse_function_type(StringView descriptor, ir::Type 
 
 ir::Function *Frontend::materialise_function(StringView owner, StringView name, StringView descriptor,
                                              ir::Type *this_type) {
-    auto full_name = codespy::format("{}.{}", owner, name);
-    auto *&slot = m_function_map[full_name];
+    auto mangled_name = codespy::format("{}.{}#{}", owner, name, descriptor);
+    auto *&slot = m_function_map[mangled_name];
     if (slot == nullptr) {
+        auto human_name = codespy::format("{}.{}", owner, name);
         auto *type = parse_function_type(descriptor, this_type);
-        slot = new ir::Function(*m_context, std::move(full_name), type);
+        slot = new ir::Function(*m_context, human_name, type);
+    } else {
+#ifndef NDEBUG
+        auto *type = parse_function_type(descriptor, this_type);
+        assert(type == slot->function_type());
+#endif
     }
     return slot;
 }
