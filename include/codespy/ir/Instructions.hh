@@ -11,12 +11,27 @@ namespace codespy::ir {
 
 class Function;
 
+class ArrayLengthInst : public Instruction {
+public:
+    static constexpr auto k_opcode = Opcode::ArrayLength;
+
+    ArrayLengthInst(BasicBlock *parent, Value *array_ref);
+
+    Value *array_ref() const { return operand(0); }
+};
+
 enum class BinaryOp {
     Add,
     Sub,
     Mul,
     Div,
     Rem,
+    Shl,
+    Shr,
+    UShr,
+    And,
+    Or,
+    Xor,
 };
 
 class BinaryInst : public Instruction {
@@ -81,6 +96,21 @@ public:
     CompareInst(BasicBlock *parent, CompareOp op, Value *lhs, Value *rhs);
 
     CompareOp op() const { return m_op; }
+    Value *lhs() const { return operand(0); }
+    Value *rhs() const { return operand(1); }
+};
+
+class JavaCompareInst : public Instruction {
+    Type *const m_operand_type;
+    const bool m_greater_on_nan;
+
+public:
+    static constexpr auto k_opcode = Opcode::JavaCompare;
+
+    JavaCompareInst(BasicBlock *parent, Type *operand_type, Value *lhs, Value *rhs, bool greater_on_nan);
+
+    bool greater_on_nan() const { return m_greater_on_nan; }
+    Type *operand_type() const { return m_operand_type; }
     Value *lhs() const { return operand(0); }
     Value *rhs() const { return operand(1); }
 };
@@ -174,6 +204,23 @@ public:
     Value *array_ref() const { return operand(0); }
     Value *index() const { return operand(1); }
     Value *value() const { return operand(2); }
+};
+
+class StoreFieldInst : public Instruction {
+    String m_owner;
+    String m_name;
+    bool m_has_object_ref;
+
+public:
+    static constexpr auto k_opcode = Opcode::StoreField;
+
+    StoreFieldInst(BasicBlock *parent, String owner, String name, Value *value, Value *object_ref);
+
+    const String &owner() const { return m_owner; }
+    const String &name() const { return m_name; }
+    bool has_object_ref() const { return m_has_object_ref; }
+    Value *value() const { return operand(0); }
+    Value *object_ref() const { return operand(1); }
 };
 
 class SwitchInst : public Instruction {

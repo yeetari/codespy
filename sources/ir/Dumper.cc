@@ -24,10 +24,12 @@ class Dumper final : public Visitor {
 
 public:
     void run_on(Function *function);
+    void visit(ArrayLengthInst &) override;
     void visit(BinaryInst &) override;
     void visit(BranchInst &) override;
     void visit(CallInst &) override;
     void visit(CompareInst &) override;
+    void visit(JavaCompareInst &) override;
     void visit(LoadInst &) override;
     void visit(LoadArrayInst &) override;
     void visit(LoadFieldInst &) override;
@@ -37,6 +39,7 @@ public:
     void visit(ReturnInst &) override;
     void visit(StoreInst &) override;
     void visit(StoreArrayInst &) override;
+    void visit(StoreFieldInst &) override;
     void visit(SwitchInst &) override;
     void visit(ThrowInst &) override;
 };
@@ -140,6 +143,10 @@ void Dumper::run_on(Function *function) {
     codespy::println("}");
 }
 
+void Dumper::visit(ArrayLengthInst &array_length) {
+    codespy::print("array_length {}", value_string(array_length.array_ref()));
+}
+
 void Dumper::visit(BinaryInst &binary) {
     switch (binary.op()) {
     case BinaryOp::Add:
@@ -156,6 +163,24 @@ void Dumper::visit(BinaryInst &binary) {
         break;
     case BinaryOp::Rem:
         codespy::print("rem ");
+        break;
+    case BinaryOp::Shl:
+        codespy::print("shl ");
+        break;
+    case BinaryOp::Shr:
+        codespy::print("shr ");
+        break;
+    case BinaryOp::UShr:
+        codespy::print("ushr ");
+        break;
+    case BinaryOp::And:
+        codespy::print("and ");
+        break;
+    case BinaryOp::Or:
+        codespy::print("or ");
+        break;
+    case BinaryOp::Xor:
+        codespy::print("xor ");
         break;
     }
     codespy::print("{}, {}", value_string(binary.lhs()), value_string(binary.rhs()));
@@ -210,6 +235,34 @@ void Dumper::visit(CompareInst &compare) {
     codespy::print("{}, {}", value_string(compare.lhs()), value_string(compare.rhs()));
 }
 
+void Dumper::visit(JavaCompareInst &java_compare) {
+    const auto type_kind = java_compare.operand_type()->kind();
+    switch (type_kind) {
+    case TypeKind::Integer:
+        assert(static_cast<IntType *>(java_compare.operand_type())->bit_width() == 64);
+        codespy::print('l');
+        break;
+    case TypeKind::Float:
+        codespy::print('f');
+        break;
+    case TypeKind::Double:
+        codespy::print('d');
+        break;
+    default:
+        assert(false);
+    }
+
+    codespy::print("cmp");
+    if (type_kind == TypeKind::Float || type_kind == TypeKind::Double) {
+        if (java_compare.greater_on_nan()) {
+            codespy::print('g');
+        } else {
+            codespy::print('l');
+        }
+    }
+    codespy::print(" {}, {}", value_string(java_compare.lhs()), value_string(java_compare.rhs()));
+}
+
 void Dumper::visit(LoadInst &load) {
     codespy::print("load {}", value_string(load.pointer()));
 }
@@ -221,7 +274,7 @@ void Dumper::visit(LoadArrayInst &load_array) {
 void Dumper::visit(LoadFieldInst &load_field) {
     codespy::print("load_field {} {}.{}", type_string(load_field.type()), load_field.owner(), load_field.name());
     if (load_field.has_object_ref()) {
-        codespy::print("on {}", value_string(load_field.object_ref()));
+        codespy::print(", on {}", value_string(load_field.object_ref()));
     }
 }
 
@@ -259,6 +312,13 @@ void Dumper::visit(StoreInst &store) {
 void Dumper::visit(StoreArrayInst &store_array) {
     codespy::print("store_array {}[{}], {}", value_string(store_array.array_ref()), value_string(store_array.index()),
                    value_string(store_array.value()));
+}
+
+void Dumper::visit(StoreFieldInst &store_field) {
+    codespy::print("store_field {}.{}, {}", store_field.owner(), store_field.name(), value_string(store_field.value()));
+    if (store_field.has_object_ref()) {
+        codespy::print(", on {}", value_string(store_field.object_ref()));
+    }
 }
 
 void Dumper::visit(SwitchInst &switch_inst) {

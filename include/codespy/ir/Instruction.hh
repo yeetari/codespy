@@ -22,11 +22,15 @@ enum class Opcode : std::uint8_t {
     Switch,
 
     // Java specific
+    // TODO: Some can be intrinsics.
+    ArrayLength,
+    JavaCompare,
     LoadArray,
     LoadField,
     New,
     NewArray,
     StoreArray,
+    StoreField,
     Throw,
 };
 

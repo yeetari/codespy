@@ -6,10 +6,12 @@
 #define TERM_INST(opcode, Class) INST(opcode, Class)
 #endif
 
+INST(Opcode::ArrayLength, ArrayLengthInst)
 INST(Opcode::Binary, BinaryInst)
 TERM_INST(Opcode::Branch, BranchInst)
 INST(Opcode::Call, CallInst)
 INST(Opcode::Compare, CompareInst)
+INST(Opcode::JavaCompare, JavaCompareInst)
 INST(Opcode::Load, LoadInst)
 INST(Opcode::LoadArray, LoadArrayInst)
 INST(Opcode::LoadField, LoadFieldInst)
@@ -19,6 +21,7 @@ INST(Opcode::Phi, PhiInst)
 TERM_INST(Opcode::Return, ReturnInst)
 INST(Opcode::Store, StoreInst)
 INST(Opcode::StoreArray, StoreArrayInst)
+INST(Opcode::StoreField, StoreFieldInst)
 TERM_INST(Opcode::Switch, SwitchInst)
 TERM_INST(Opcode::Throw, ThrowInst)
 

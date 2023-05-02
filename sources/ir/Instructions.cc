@@ -6,6 +6,11 @@
 
 namespace codespy::ir {
 
+ArrayLengthInst::ArrayLengthInst(BasicBlock *parent, Value *array_ref)
+    : Instruction(k_opcode, parent, parent->context().int_type(32), 1) {
+    set_operand(0, array_ref);
+}
+
 BinaryInst::BinaryInst(BasicBlock *parent, Type *type, BinaryOp op, Value *lhs, Value *rhs)
     : Instruction(k_opcode, parent, type, 2), m_op(op) {
     set_operand(0, lhs);
@@ -64,6 +69,13 @@ CompareInst::CompareInst(BasicBlock *parent, CompareOp op, Value *lhs, Value *rh
     set_operand(1, rhs);
 }
 
+JavaCompareInst::JavaCompareInst(BasicBlock *parent, Type *operand_type, Value *lhs, Value *rhs, bool greater_on_nan)
+    : Instruction(k_opcode, parent, parent->context().int_type(32), 2), m_operand_type(operand_type),
+      m_greater_on_nan(greater_on_nan) {
+    set_operand(0, lhs);
+    set_operand(1, rhs);
+}
+
 LoadInst::LoadInst(BasicBlock *parent, Type *type, Value *pointer) : Instruction(k_opcode, parent, type, 1) {
     set_operand(0, pointer);
 }
@@ -118,6 +130,15 @@ StoreArrayInst::StoreArrayInst(BasicBlock *parent, Value *array_ref, Value *inde
     set_operand(2, value);
 }
 
+StoreFieldInst::StoreFieldInst(BasicBlock *parent, String owner, String name, Value *value, Value *object_ref)
+    : Instruction(k_opcode, parent, parent->context().void_type(), object_ref != nullptr ? 2 : 1),
+      m_owner(std::move(owner)), m_name(std::move(name)), m_has_object_ref(object_ref != nullptr) {
+    set_operand(0, value);
+    if (object_ref != nullptr) {
+        set_operand(1, object_ref);
+    }
+}
+
 SwitchInst::SwitchInst(BasicBlock *parent, Value *value, BasicBlock *default_target,
                        Span<std::pair<Value *, BasicBlock *>> targets)
     : Instruction(k_opcode, parent, parent->context().void_type(), 2 + targets.size() * 2),
@@ -138,7 +159,7 @@ Value *SwitchInst::case_value(unsigned index) const {
     return operand(index * 2 + 2);
 }
 
-BasicBlock *SwitchInst::case_target(unsigned index) const{
+BasicBlock *SwitchInst::case_target(unsigned index) const {
     return static_cast<BasicBlock *>(operand(index * 2 + 3));
 }
 

@@ -250,8 +250,11 @@ void Frontend::visit_cast(BaseType, BaseType) {
     assert(false);
 }
 
-void Frontend::visit_compare(BaseType, bool) {
-    assert(false);
+void Frontend::visit_compare(BaseType base_type, bool greater_on_nan) {
+    ir::Value *rhs = m_stack.take_last();
+    ir::Value *lhs = m_stack.take_last();
+    ir::Type *type = lower_base_type(base_type);
+    m_stack.push(m_block->append<ir::JavaCompareInst>(type, lhs, rhs, greater_on_nan));
 }
 
 void Frontend::visit_new(StringView descriptor) {
@@ -284,8 +287,13 @@ void Frontend::visit_get_field(StringView owner, StringView name, StringView des
     m_stack.push(m_block->append<ir::LoadFieldInst>(parse_type(descriptor), owner, name, object_ref));
 }
 
-void Frontend::visit_put_field(StringView, StringView, StringView, bool) {
-    assert(false);
+void Frontend::visit_put_field(StringView owner, StringView name, StringView, bool instance) {
+    ir::Value *value = m_stack.take_last();
+    ir::Value *object_ref = nullptr;
+    if (instance) {
+        object_ref = m_stack.take_last();
+    }
+    m_block->append<ir::StoreFieldInst>(owner, name, value, object_ref);
 }
 
 void Frontend::visit_invoke(InvokeKind kind, StringView owner, StringView name, StringView descriptor) {
@@ -319,8 +327,20 @@ static ir::BinaryOp lower_binary_math_op(MathOp math_op) {
         return ir::BinaryOp::Div;
     case MathOp::Rem:
         return ir::BinaryOp::Rem;
+    case MathOp::Shl:
+        return ir::BinaryOp::Shl;
+    case MathOp::Shr:
+        return ir::BinaryOp::Shr;
+    case MathOp::UShr:
+        return ir::BinaryOp::UShr;
+    case MathOp::And:
+        return ir::BinaryOp::And;
+    case MathOp::Or:
+        return ir::BinaryOp::Or;
+    case MathOp::Xor:
+        return ir::BinaryOp::Xor;
     default:
-        codespy::unreachable();
+        assert(false);
     }
 }
 
@@ -336,9 +356,18 @@ void Frontend::visit_monitor_op(MonitorOp) {
 }
 
 void Frontend::visit_reference_op(ReferenceOp reference_op) {
-    assert(reference_op == ReferenceOp::Throw);
-    ir::Value *exception_ref = m_stack.take_last();
-    m_block->append<ir::ThrowInst>(exception_ref);
+    switch (reference_op) {
+    case ReferenceOp::ArrayLength: {
+        ir::Value *array_ref = m_stack.take_last();
+        m_stack.push(m_block->append<ir::ArrayLengthInst>(array_ref));
+        break;
+    }
+    case ReferenceOp::Throw: {
+        ir::Value *exception_ref = m_stack.take_last();
+        m_block->append<ir::ThrowInst>(exception_ref);
+        break;
+    }
+    }
 }
 
 void Frontend::visit_stack_op(StackOp stack_op) {
@@ -428,8 +457,7 @@ void Frontend::emit_switch(std::size_t case_count, std::int32_t default_pc, F ne
     m_block->append<ir::SwitchInst>(key_value, default_target, targets.span());
 }
 
-void Frontend::visit_table_switch(std::int32_t low, std::int32_t, std::int32_t default_pc,
-                                  Span<std::int32_t> table) {
+void Frontend::visit_table_switch(std::int32_t low, std::int32_t, std::int32_t default_pc, Span<std::int32_t> table) {
     std::int32_t index = low;
     emit_switch(table.size(), default_pc, [&] {
         index++;
