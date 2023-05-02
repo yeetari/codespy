@@ -33,6 +33,7 @@ public:
     void visit(LoadFieldInst &) override;
     void visit(NewInst &) override;
     void visit(NewArrayInst &) override;
+    void visit(PhiInst &) override;
     void visit(ReturnInst &) override;
     void visit(StoreInst &) override;
     void visit(StoreArrayInst &) override;
@@ -228,6 +229,10 @@ void Dumper::visit(NewArrayInst &new_array) {
         codespy::print(value_string(new_array.count(i)));
     }
     codespy::print(']');
+}
+
+void Dumper::visit(PhiInst &) {
+    assert(false);
 }
 
 void Dumper::visit(ReturnInst &return_inst) {

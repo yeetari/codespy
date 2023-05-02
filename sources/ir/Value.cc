@@ -59,51 +59,8 @@ void Value::destroy() {
     case ValueKind::Instruction: {
         const auto *inst = as<Instruction>();
         switch (inst->opcode()) {
-        case Opcode::Binary:
-            delete inst->as<BinaryInst>();
-            break;
-        case Opcode::Branch:
-            delete inst->as<BranchInst>();
-            break;
-        case Opcode::Call:
-            delete inst->as<CallInst>();
-            break;
-        case Opcode::Compare:
-            delete inst->as<CompareInst>();
-            break;
-        case Opcode::Load:
-            delete inst->as<LoadInst>();
-            break;
-        case Opcode::LoadArray:
-            delete inst->as<LoadArrayInst>();
-            break;
-        case Opcode::LoadField:
-            delete inst->as<LoadFieldInst>();
-            break;
-        case Opcode::New:
-            delete inst->as<NewInst>();
-            break;
-        case Opcode::NewArray:
-            delete inst->as<NewArrayInst>();
-            break;
-        case Opcode::Phi:
-            delete inst->as<PhiInst>();
-            break;
-        case Opcode::Return:
-            delete inst->as<ReturnInst>();
-            break;
-        case Opcode::Store:
-            delete inst->as<StoreInst>();
-            break;
-        case Opcode::StoreArray:
-            delete inst->as<StoreArrayInst>();
-            break;
-        case Opcode::Switch:
-            delete inst->as<SwitchInst>();
-            break;
-        case Opcode::Throw:
-            delete inst->as<ThrowInst>();
-            break;
+#define INST(opcode, Class) case opcode: delete inst->as<Class>(); break;
+#include <codespy/ir/Instructions.in>
         }
         break;
     }

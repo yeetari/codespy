@@ -20,50 +20,8 @@ void Instruction::set_operand(unsigned index, Value *value) {
 
 void Instruction::accept(Visitor &visitor) {
     switch (m_opcode) {
-    case Opcode::Binary:
-        visitor.visit(static_cast<BinaryInst &>(*this));
-        break;
-    case Opcode::Branch:
-        visitor.visit(static_cast<BranchInst &>(*this));
-        break;
-    case Opcode::Call:
-        visitor.visit(static_cast<CallInst &>(*this));
-        break;
-    case Opcode::Compare:
-        visitor.visit(static_cast<CompareInst &>(*this));
-        break;
-    case Opcode::Load:
-        visitor.visit(static_cast<LoadInst &>(*this));
-        break;
-    case Opcode::LoadArray:
-        visitor.visit(static_cast<LoadArrayInst &>(*this));
-        break;
-    case Opcode::LoadField:
-        visitor.visit(static_cast<LoadFieldInst &>(*this));
-        break;
-    case Opcode::New:
-        visitor.visit(static_cast<NewInst &>(*this));
-        break;
-    case Opcode::NewArray:
-        visitor.visit(static_cast<NewArrayInst &>(*this));
-        break;
-    case Opcode::Return:
-        visitor.visit(static_cast<ReturnInst &>(*this));
-        break;
-    case Opcode::Store:
-        visitor.visit(static_cast<StoreInst &>(*this));
-        break;
-    case Opcode::StoreArray:
-        visitor.visit(static_cast<StoreArrayInst &>(*this));
-        break;
-    case Opcode::Switch:
-        visitor.visit(static_cast<SwitchInst &>(*this));
-        break;
-    case Opcode::Throw:
-        visitor.visit(static_cast<ThrowInst &>(*this));
-        break;
-    default:
-        codespy::unreachable();
+#define INST(opcode, Class) case opcode: visitor.visit(*as<Class>()); break;
+#include <codespy/ir/Instructions.in>
     }
 }
 
@@ -73,10 +31,8 @@ void Instruction::remove_from_parent() {
 
 bool Instruction::is_terminator() const {
     switch (m_opcode) {
-    case Opcode::Branch:
-    case Opcode::Return:
-    case Opcode::Switch:
-    case Opcode::Throw:
+#define TERM_INST(opcode, Class) case opcode:
+#include <codespy/ir/Instructions.in>
         return true;
     default:
         return false;
