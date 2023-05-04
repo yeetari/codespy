@@ -2,11 +2,11 @@
 
 #include <codespy/container/Array.hh>
 #include <codespy/container/Vector.hh>
-#include <codespy/support/Integral.hh>
 #include <codespy/support/Span.hh>
 #include <codespy/support/String.hh>
 #include <codespy/support/StringView.hh>
 
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 
@@ -20,12 +20,12 @@ class StringBuilder {
     void append_single(std::uint64_t, const char *);
     void append_single(StringView, const char *);
 
-    template <SignedIntegral T>
+    template <std::signed_integral T>
     void append_single(T arg, const char *opts) {
         append_single(static_cast<std::int64_t>(arg), opts);
     }
 
-    template <UnsignedIntegral T>
+    template <std::unsigned_integral T>
     void append_single(T arg, const char *opts) {
         append_single(static_cast<std::uint64_t>(arg), opts);
     }

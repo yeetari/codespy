@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <utility>
 
 namespace codespy {
@@ -67,7 +68,7 @@ FixedBuffer<T> FixedBuffer<T>::create_uninitialised(std::size_t size) {
 template <TriviallyCopyable T>
 FixedBuffer<T> FixedBuffer<T>::create_zeroed(std::size_t size) {
     auto buffer = create_uninitialised(size);
-    __builtin_memset(buffer.data(), 0, size * sizeof(T));
+    std::memset(buffer.data(), 0, size * sizeof(T));
     return buffer;
 }
 

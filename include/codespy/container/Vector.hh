@@ -8,19 +8,20 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <type_traits>
 #include <utility>
 
 namespace codespy {
 
 template <typename T, typename SizeType = std::uint32_t>
 class Vector {
-    using BaseType = remove_ref<T>;
+    using BaseType = std::remove_reference_t<T>;
     struct RefWrapper {
         BaseType *ptr;
         // When T is a reference T is the same as BaseType &.
         operator T() const { return *ptr; }
     };
-    using StorageType = conditional<is_ref<T>, RefWrapper, T>;
+    using StorageType = std::conditional_t<std::is_reference_v<T>, RefWrapper, T>;
 
     StorageType *m_data{nullptr};
     SizeType m_capacity{0};
@@ -48,11 +49,11 @@ public:
 
     template <typename... Args>
     T &emplace(Args &&...args)
-        requires(!is_ref<T>);
+        requires(!std::is_reference_v<T>);
     template <typename Container>
     void extend(const Container &container);
     void push(const T &elem)
-        requires(!is_ref<T>);
+        requires(!std::is_reference_v<T>);
     void push(T &&elem);
     void pop();
 
@@ -124,7 +125,7 @@ Vector<T, SizeType> &Vector<T, SizeType>::operator=(Vector &&other) {
 
 template <typename T, typename SizeType>
 void Vector<T, SizeType>::clear() {
-    if constexpr (!is_trivially_destructible<StorageType>) {
+    if constexpr (!std::is_trivially_destructible_v<StorageType>) {
         for (auto *elem = end(); elem != begin();) {
             (--elem)->~StorageType();
         }
@@ -148,8 +149,8 @@ void Vector<T, SizeType>::ensure_size(SizeType size, Args &&...args) {
         return;
     }
     ensure_capacity(size);
-    if constexpr (!is_trivially_constructible<T> || sizeof...(Args) != 0) {
-        static_assert(!is_ref<T>);
+    if constexpr (!std::is_trivially_constructible_v<T> || sizeof...(Args) != 0) {
+        static_assert(!std::is_reference_v<T>);
         for (SizeType i = m_size; i < size; i++) {
             new (begin() + i) T(std::forward<Args>(args)...);
         }
@@ -163,8 +164,8 @@ template <typename T, typename SizeType>
 void Vector<T, SizeType>::reallocate(SizeType capacity) {
     assert(capacity >= m_size);
     auto *new_data = reinterpret_cast<StorageType *>(new std::uint8_t[capacity * sizeof(StorageType)]);
-    if constexpr (!is_trivially_copyable<StorageType>) {
-        static_assert(!is_ref<T>);
+    if constexpr (!std::is_trivially_copyable_v<StorageType>) {
+        static_assert(!std::is_reference_v<T>);
         for (auto *data = new_data; auto &elem : *this) {
             new (data++) StorageType(std::move(elem));
         }
@@ -188,7 +189,7 @@ void Vector<T, SizeType>::resize_unsafe(SizeType capacity) {
 template <typename T, typename SizeType>
 template <typename... Args>
 T &Vector<T, SizeType>::emplace(Args &&...args)
-    requires(!is_ref<T>)
+    requires(!std::is_reference_v<T>)
 {
     ensure_capacity(m_size + 1);
     new (end()) T(std::forward<Args>(args)...);
@@ -202,7 +203,7 @@ void Vector<T, SizeType>::extend(const Container &container) {
         return;
     }
     ensure_capacity(m_size + container.size());
-    if constexpr (is_trivially_copyable<StorageType>) {
+    if constexpr (std::is_trivially_copyable_v<StorageType>) {
         std::memcpy(end(), container.data(), container.size_bytes());
         m_size += container.size();
     } else {
@@ -214,10 +215,10 @@ void Vector<T, SizeType>::extend(const Container &container) {
 
 template <typename T, typename SizeType>
 void Vector<T, SizeType>::push(const T &elem)
-    requires(!is_ref<T>)
+    requires(!std::is_reference_v<T>)
 {
     ensure_capacity(m_size + 1);
-    if constexpr (is_trivially_copyable<T>) {
+    if constexpr (std::is_trivially_copyable_v<T>) {
         std::memcpy(end(), &elem, sizeof(T));
     } else {
         new (end()) StorageType(elem);
@@ -228,7 +229,7 @@ void Vector<T, SizeType>::push(const T &elem)
 template <typename T, typename SizeType>
 void Vector<T, SizeType>::push(T &&elem) {
     ensure_capacity(m_size + 1);
-    if constexpr (is_ref<T>) {
+    if constexpr (std::is_reference_v<T>) {
         new (end()) StorageType{&elem};
     } else {
         new (end()) StorageType(std::move(elem));
@@ -254,7 +255,7 @@ typename Vector<T, SizeType>::StorageType Vector<T, SizeType>::take_last() {
     assert(!empty());
     m_size--;
     auto value = std::move(*end());
-    if constexpr (!is_ref<T>) {
+    if constexpr (!std::is_reference_v<T>) {
         end()->~T();
         return value;
     } else {

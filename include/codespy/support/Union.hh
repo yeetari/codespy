@@ -53,7 +53,7 @@ struct Union {
 
     template <ContainsType<Ts...> T>
     T &get() {
-        return *__builtin_launder(reinterpret_cast<T *>(data));
+        return *std::launder(reinterpret_cast<T *>(data));
     }
     template <ContainsType<Ts...> T>
     const T &get() const {

@@ -7,22 +7,17 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <type_traits>
 #include <utility>
 
 namespace codespy {
 
 template <typename T>
-inline constexpr bool is_enum = __is_enum(T);
-
-template <typename T>
-concept Enum = is_enum<T>;
-
-template <Enum E>
-using underlying_type = __underlying_type(E);
+concept Enum = std::is_enum_v<T>;
 
 template <Enum E>
 constexpr auto to_underlying(E value) {
-    return static_cast<underlying_type<E>>(value);
+    return static_cast<std::underlying_type_t<E>>(value);
 }
 
 template <Enum E, E V>

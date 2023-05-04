@@ -3,6 +3,7 @@
 #include <codespy/container/Array.hh>
 #include <codespy/support/Utility.hh>
 
+#include <type_traits>
 #include <utility>
 
 namespace codespy {
@@ -17,7 +18,7 @@ public:
     Optional(const T &value) : m_present(true) { m_storage.set(value); }
     Optional(T &&value) : m_present(true) { m_storage.set(std::move(value)); }
     // clang-format off
-    Optional(const Optional &) requires is_trivially_copyable<T> = default;
+    Optional(const Optional &) requires std::is_trivially_copyable_v<T> = default;
     // clang-format on
     Optional(const Optional &);
     Optional(Optional &&);
@@ -108,7 +109,7 @@ Optional<T> &Optional<T>::operator=(Optional &&other) {
 
 template <typename T>
 void Optional<T>::clear() {
-    if constexpr (!is_trivially_destructible<T>) {
+    if constexpr (!std::is_trivially_destructible_v<T>) {
         if (m_present) {
             m_storage.release();
         }

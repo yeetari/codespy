@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <type_traits>
 
 namespace codespy {
 
@@ -13,10 +14,10 @@ class Span {
     std::size_t m_size{0};
 
     template <typename U>
-    using const_t = copy_const<T, U>;
+    using const_t = codespy::copy_const<T, U>;
 
-    static constexpr bool is_void = is_same<remove_cv<T>, void>;
-    using no_void_t = conditional<is_void, char, T>;
+    static constexpr bool is_void = std::is_same_v<std::remove_cv_t<T>, void>;
+    using no_void_t = std::conditional_t<is_void, char, T>;
 
 public:
     constexpr Span() = default;
@@ -30,7 +31,7 @@ public:
     constexpr Span<T> subspan(std::size_t offset, std::size_t size) const;
 
     // Allow implicit conversion from `Span<T>` to `Span<void>`.
-    constexpr operator Span<void>() const requires(!is_const<T>) { return {data(), size_bytes()}; }
+    constexpr operator Span<void>() const requires(!std::is_const_v<T>) { return {data(), size_bytes()}; }
     constexpr operator Span<const void>() const requires(!is_void) { return {data(), size_bytes()}; }
     constexpr operator Span<const T>() const { return {data(), size_bytes()}; }
 

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <codespy/container/Array.hh>
-#include <codespy/support/Integral.hh>
 #include <codespy/support/Result.hh>
 #include <codespy/support/Span.hh>
 #include <codespy/support/StreamError.hh>
@@ -9,6 +8,7 @@
 #include <codespy/support/StringView.hh>
 #include <codespy/support/UniquePtr.hh>
 
+#include <concepts>
 #include <cstdint>
 #include <sys/types.h>
 
@@ -18,9 +18,9 @@ class StreamOffset {
     ssize_t m_value;
 
 public:
-    template <SignedIntegral T>
+    template <std::signed_integral T>
     StreamOffset(T value) : m_value(value) {}
-    template <UnsignedIntegral T>
+    template <std::unsigned_integral T>
     StreamOffset(T value) : m_value(static_cast<ssize_t>(value)) {}
 
     operator ssize_t() const { return m_value; }
@@ -49,21 +49,21 @@ struct Stream {
     virtual Result<uint8_t, StreamError> read_byte();
     virtual Result<void, StreamError> write_byte(uint8_t byte);
 
-    template <Integral T>
+    template <std::integral T>
     Result<T, StreamError> read_be();
-    template <Integral T>
+    template <std::integral T>
     Result<void, StreamError> write_be(T value);
 
-    template <UnsignedIntegral T>
+    template <std::unsigned_integral T>
     Result<T, StreamError> read_varint();
-    template <UnsignedIntegral T>
+    template <std::unsigned_integral T>
     Result<void, StreamError> write_varint(T value);
 
     Result<String, StreamError> read_string();
     Result<void, StreamError> write_string(StringView string);
 };
 
-template <Integral T>
+template <std::integral T>
 Result<T, StreamError> Stream::read_be() {
     Array<std::uint8_t, sizeof(T)> bytes;
     if (CODESPY_TRY(read(bytes.span())) != sizeof(T)) {
@@ -78,7 +78,7 @@ Result<T, StreamError> Stream::read_be() {
     return value;
 }
 
-template <Integral T>
+template <std::integral T>
 Result<void, StreamError> Stream::write_be(T value) {
     Array<std::uint8_t, sizeof(T)> bytes;
     for (std::uint32_t i = 0; i < sizeof(T); i++) {
@@ -89,7 +89,7 @@ Result<void, StreamError> Stream::write_be(T value) {
     return {};
 }
 
-template <UnsignedIntegral T>
+template <std::unsigned_integral T>
 Result<T, StreamError> Stream::read_varint() {
     T value = 0;
     for (T byte_count = 0; byte_count <= sizeof(T); byte_count++) {
@@ -102,7 +102,7 @@ Result<T, StreamError> Stream::read_varint() {
     return value;
 }
 
-template <UnsignedIntegral T>
+template <std::unsigned_integral T>
 Result<void, StreamError> Stream::write_varint(T value) {
     while (value >= 128) {
         CODESPY_TRY(write_byte((value & 0x7fu) | 0x80u));

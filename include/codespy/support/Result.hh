@@ -38,8 +38,10 @@ namespace codespy {
 
 template <typename T, typename... Es>
 class [[nodiscard]] Result {
-    static constexpr bool is_void = is_same<decay<T>, void>;
-    using storage_t = conditional<is_void, char, conditional<is_ref<T>, RefWrapper<remove_ref<T>>, T>>;
+    static constexpr bool is_void = std::is_same_v<std::decay_t<T>, void>;
+    using storage_t =
+        std::conditional_t<is_void, char,
+                           std::conditional_t<std::is_reference_v<T>, RefWrapper<std::remove_reference_t<T>>, T>>;
     Variant<storage_t, Es...> m_value;
 
 public:
@@ -57,11 +59,11 @@ public:
 
     template <typename U>
     Result(U &ref)
-        requires(is_ref<T> && !is_void)
+        requires(std::is_reference_v<T> && !is_void)
         : m_value(codespy::ref(ref)) {}
     template <typename U>
     Result(const U &ref)
-        requires(is_ref<T> && !is_void)
+        requires(std::is_reference_v<T> && !is_void)
         : m_value(codespy::cref(ref)) {}
 
     Result(const Result &) = delete;
