@@ -15,4 +15,9 @@ public:
     ListNode *next() const { return m_next; }
 };
 
+template <typename T>
+struct ListNodeTraits {
+    static void destroy_node(T *node) { delete node; }
+};
+
 } // namespace codespy

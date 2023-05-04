@@ -4,6 +4,7 @@
 #include <codespy/bytecode/Visitor.hh>
 #include <codespy/container/Vector.hh>
 #include <codespy/ir/Dumper.hh>
+#include <codespy/ir/Function.hh>
 #include <codespy/support/Enum.hh>
 #include <codespy/support/Print.hh>
 #include <codespy/support/SpanStream.hh>
@@ -37,6 +38,9 @@ int main(int, char **argv) {
                 CODESPY_EXPECT(bc::parse_class(stream, frontend));
                 for (auto *function : frontend.functions()) {
                     ir::dump_code(function);
+                }
+                for (auto *function : frontend.functions()) {
+                    function->destroy();
                 }
             }
         }

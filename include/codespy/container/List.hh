@@ -20,11 +20,19 @@ public:
     using iterator = ListIterator<T>;
 
     List();
+    List(const List &) = delete;
+    List(List &&) noexcept = default;
+    ~List();
 
+    List &operator=(const List &) = delete;
+    List &operator=(List &&) noexcept = default;
+
+    void clear();
     template <std::derived_from<T> U, typename... Args>
     U *emplace(iterator it, Args &&...args);
     void insert(iterator it, T *elem);
     iterator erase(iterator it);
+    iterator erase(iterator first, iterator last);
 
     iterator begin() const;
     iterator end() const;
@@ -51,6 +59,16 @@ public:
         m_elem = m_elem->prev();
         return *this;
     }
+    ListIterator operator++(int) {
+        ListIterator tmp = *this;
+        ++*this;
+        return tmp;
+    }
+    ListIterator operator--(int) {
+        ListIterator tmp = *this;
+        --*this;
+        return tmp;
+    }
 
     bool operator==(const ListIterator &other) const {
         return m_elem == other.m_elem;
@@ -66,6 +84,16 @@ List<T>::List() {
     m_sentinel = codespy::make_unique<ListNode>();
     m_sentinel->m_prev = m_sentinel.ptr();
     m_sentinel->m_next = m_sentinel.ptr();
+}
+
+template <typename T>
+List<T>::~List() {
+    clear();
+}
+
+template <typename T>
+void List<T>::clear() {
+    erase(begin(), end());
 }
 
 template <typename T>
@@ -91,7 +119,16 @@ List<T>::iterator List<T>::erase(iterator it) {
     auto *next = it->next();
     next->m_prev = prev;
     prev->m_next = next;
-    return ++it;
+    ListNodeTraits<T>::destroy_node(*it++);
+    return it;
+}
+
+template <typename T>
+List<T>::iterator List<T>::erase(iterator first, iterator last) {
+    while (first != last) {
+        first = erase(first);
+    }
+    return last;
 }
 
 template <typename T>

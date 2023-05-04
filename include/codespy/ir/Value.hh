@@ -1,5 +1,8 @@
 #pragma once
 
+#include <codespy/container/ListNode.hh>
+
+#include <concepts>
 #include <cstdint>
 
 namespace codespy::ir {
@@ -86,3 +89,12 @@ bool Value::is() const {
 }
 
 } // namespace codespy::ir
+
+namespace codespy {
+
+template <std::derived_from<ir::Value> T>
+struct ListNodeTraits<T> {
+    static void destroy_node(T *value) { value->destroy(); }
+};
+
+} // namespace codespy
