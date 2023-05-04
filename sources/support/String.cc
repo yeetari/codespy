@@ -32,8 +32,9 @@ String::~String() {
 }
 
 String &String::operator=(String &&other) {
-    m_data = std::exchange(other.m_data, nullptr);
-    m_length = std::exchange(other.m_length, 0u);
+    String moved(std::move(other));
+    std::swap(m_data, moved.m_data);
+    std::swap(m_length, moved.m_length);
     return *this;
 }
 
