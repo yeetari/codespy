@@ -425,7 +425,11 @@ Result<std::int32_t, ParseError, StreamError> CodeAttribute::parse_inst(std::int
     if (opcode == Opcode::CHECKCAST || opcode == Opcode::INSTANCEOF) {
         const auto type_op = static_cast<TypeOp>(opcode - Opcode::CHECKCAST);
         const auto type_name = m_constant_pool.read_string_like(CODESPY_TRY(stream.read_be<std::uint16_t>()));
-        visitor.visit_type_op(type_op, type_name);
+        if (type_name[0] == '[') {
+            visitor.visit_type_op(type_op, type_name);
+        } else {
+            visitor.visit_type_op(type_op, codespy::format("L{};", type_name));
+        }
         return 3;
     }
 
@@ -632,13 +636,16 @@ Result<std::int32_t, ParseError, StreamError> CodeAttribute::parse_inst(std::int
         return 2;
     case Opcode::ANEWARRAY: {
         const auto class_name = m_constant_pool.read_string_like(CODESPY_TRY(stream.read_be<std::uint16_t>()));
-        visitor.visit_new(codespy::format("[L{};", class_name));
+        if (class_name[0] == '[') {
+            visitor.visit_new(class_name);
+        } else {
+            visitor.visit_new(codespy::format("[L{};", class_name));
+        }
         return 3;
     }
     case Opcode::MULTIANEWARRAY: {
         const auto descriptor = m_constant_pool.read_string_like(CODESPY_TRY(stream.read_be<std::uint16_t>()));
-        CODESPY_TRY(stream.read_byte());
-        visitor.visit_new(descriptor);
+        visitor.visit_new(descriptor, CODESPY_TRY(stream.read_byte()));
         return 4;
     }
     case Opcode::IFNULL:

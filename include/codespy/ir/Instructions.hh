@@ -78,6 +78,15 @@ public:
     bool is_invoke_special() const { return m_is_invoke_special; }
 };
 
+class CastInst : public Instruction {
+public:
+    static constexpr auto k_opcode = Opcode::Cast;
+
+    CastInst(BasicBlock *parent, Type *type, Value *value);
+
+    Value *value() const { return operand(0); }
+};
+
 enum class CompareOp {
     Equal,
     NotEqual,
@@ -98,6 +107,18 @@ public:
     CompareOp op() const { return m_op; }
     Value *lhs() const { return operand(0); }
     Value *rhs() const { return operand(1); }
+};
+
+class InstanceOfInst : public Instruction {
+    Type *const m_check_type;
+
+public:
+    static constexpr auto k_opcode = Opcode::InstanceOf;
+
+    InstanceOfInst(BasicBlock *parent, Type *check_type, Value *value);
+
+    Type *check_type() const { return m_check_type; }
+    Value *value() const { return operand(0); }
 };
 
 class JavaCompareInst : public Instruction {
@@ -147,6 +168,32 @@ public:
     const String &name() const { return m_name; }
     bool has_object_ref() const { return has_operands(); }
     Value *object_ref() const { return operand(0); }
+};
+
+enum class MonitorOp {
+    Enter,
+    Exit,
+};
+
+class MonitorInst : public Instruction {
+    const MonitorOp m_op;
+
+public:
+    static constexpr auto k_opcode = Opcode::Monitor;
+
+    MonitorInst(BasicBlock *parent, MonitorOp op, Value *object_ref);
+
+    MonitorOp op() const { return m_op; }
+    Value *object_ref() const { return operand(0); }
+};
+
+class NegateInst : public Instruction {
+public:
+    static constexpr auto k_opcode = Opcode::Negate;
+
+    NegateInst(BasicBlock *parent, Type *type, Value *value);
+
+    Value *value() const { return operand(0); }
 };
 
 class NewInst : public Instruction {

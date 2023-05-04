@@ -24,24 +24,9 @@ class Dumper final : public Visitor {
 
 public:
     void run_on(Function *function);
-    void visit(ArrayLengthInst &) override;
-    void visit(BinaryInst &) override;
-    void visit(BranchInst &) override;
-    void visit(CallInst &) override;
-    void visit(CompareInst &) override;
-    void visit(JavaCompareInst &) override;
-    void visit(LoadInst &) override;
-    void visit(LoadArrayInst &) override;
-    void visit(LoadFieldInst &) override;
-    void visit(NewInst &) override;
-    void visit(NewArrayInst &) override;
-    void visit(PhiInst &) override;
-    void visit(ReturnInst &) override;
-    void visit(StoreInst &) override;
-    void visit(StoreArrayInst &) override;
-    void visit(StoreFieldInst &) override;
-    void visit(SwitchInst &) override;
-    void visit(ThrowInst &) override;
+
+#define INST(opcode, Class) void visit(Class &) override;
+#include <codespy/ir/Instructions.in>
 };
 
 String type_string(Type *type) {
@@ -211,6 +196,10 @@ void Dumper::visit(CallInst &call) {
     codespy::print(")");
 }
 
+void Dumper::visit(CastInst &cast) {
+    codespy::print("cast {} to {}", value_string(cast.value()), type_string(cast.type()));
+}
+
 void Dumper::visit(CompareInst &compare) {
     switch (compare.op()) {
     case CompareOp::Equal:
@@ -233,6 +222,10 @@ void Dumper::visit(CompareInst &compare) {
         break;
     }
     codespy::print("{}, {}", value_string(compare.lhs()), value_string(compare.rhs()));
+}
+
+void Dumper::visit(InstanceOfInst &instance_of) {
+    codespy::print("instance_of {}, {}", value_string(instance_of.value()), type_string(instance_of.check_type()));
 }
 
 void Dumper::visit(JavaCompareInst &java_compare) {
@@ -276,6 +269,18 @@ void Dumper::visit(LoadFieldInst &load_field) {
     if (load_field.has_object_ref()) {
         codespy::print(", on {}", value_string(load_field.object_ref()));
     }
+}
+
+void Dumper::visit(MonitorInst &monitor) {
+    if (monitor.op() == MonitorOp::Enter) {
+        codespy::print("monitor_enter {}", value_string(monitor.object_ref()));
+    } else {
+        codespy::print("monitor_exit {}", value_string(monitor.object_ref()));
+    }
+}
+
+void Dumper::visit(NegateInst &negate) {
+    codespy::print("neg {}", value_string(negate.value()));
 }
 
 void Dumper::visit(NewInst &new_inst) {

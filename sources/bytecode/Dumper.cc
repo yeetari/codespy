@@ -158,8 +158,13 @@ void Dumper::visit_compare(BaseType type, bool greater_on_nan) {
     codespy::print('\n');
 }
 
-void Dumper::visit_new(StringView descriptor) {
-    codespy::println("new {}", descriptor);
+void Dumper::visit_new(StringView descriptor, std::uint8_t dimensions) {
+    codespy::print("new {}", descriptor);
+    if (dimensions != 1) {
+        codespy::println(", {}", dimensions);
+    } else {
+        codespy::print('\n');
+    }
 }
 
 void Dumper::visit_get_field(StringView owner, StringView name, StringView descriptor, bool instance) {
@@ -278,14 +283,14 @@ void Dumper::visit_stack_op(StackOp stack_op) {
     }
 }
 
-void Dumper::visit_type_op(TypeOp type_op, StringView type_name) {
+void Dumper::visit_type_op(TypeOp type_op, StringView descriptor) {
     switch (type_op) {
         using enum TypeOp;
     case CheckCast:
-        codespy::println("checkcast {}", type_name);
+        codespy::println("checkcast {}", descriptor);
         break;
     case InstanceOf:
-        codespy::println("instanceof {}", type_name);
+        codespy::println("instanceof {}", descriptor);
         break;
     }
 }

@@ -14,8 +14,10 @@ enum class Opcode : std::uint8_t {
     Binary,
     Branch,
     Call,
+    Cast,
     Compare,
     Load,
+    Negate,
     Phi,
     Return,
     Store,
@@ -24,9 +26,11 @@ enum class Opcode : std::uint8_t {
     // Java specific
     // TODO: Some can be intrinsics.
     ArrayLength,
+    InstanceOf,
     JavaCompare,
     LoadArray,
     LoadField,
+    Monitor,
     New,
     NewArray,
     StoreArray,

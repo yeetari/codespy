@@ -63,10 +63,19 @@ Vector<Value *> CallInst::arguments() const {
     return ret;
 }
 
+CastInst::CastInst(BasicBlock *parent, Type *type, Value *value) : Instruction(k_opcode, parent, type, 1) {
+    set_operand(0, value);
+}
+
 CompareInst::CompareInst(BasicBlock *parent, CompareOp op, Value *lhs, Value *rhs)
     : Instruction(k_opcode, parent, parent->context().int_type(1), 2), m_op(op) {
     set_operand(0, lhs);
     set_operand(1, rhs);
+}
+
+InstanceOfInst::InstanceOfInst(BasicBlock *parent, Type *check_type, Value *value)
+    : Instruction(k_opcode, parent, parent->context().int_type(1), 1), m_check_type(check_type) {
+    set_operand(0, value);
 }
 
 JavaCompareInst::JavaCompareInst(BasicBlock *parent, Type *operand_type, Value *lhs, Value *rhs, bool greater_on_nan)
@@ -92,6 +101,15 @@ LoadFieldInst::LoadFieldInst(BasicBlock *parent, Type *type, String owner, Strin
     if (object_ref != nullptr) {
         set_operand(0, object_ref);
     }
+}
+
+MonitorInst::MonitorInst(BasicBlock *parent, MonitorOp op, Value *object_ref)
+    : Instruction(k_opcode, parent, parent->context().void_type(), 1), m_op(op) {
+    set_operand(0, object_ref);
+}
+
+NegateInst::NegateInst(BasicBlock *parent, Type *type, Value *value) : Instruction(k_opcode, parent, type, 1) {
+    set_operand(0, value);
 }
 
 NewArrayInst::NewArrayInst(BasicBlock *parent, Type *type, Span<Value *> counts)

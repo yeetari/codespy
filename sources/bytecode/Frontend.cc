@@ -125,14 +125,23 @@ ir::Function *Frontend::materialise_function(StringView owner, StringView name, 
     return slot;
 }
 
-ir::BasicBlock *Frontend::materialise_block(std::int32_t offset) {
+ir::BasicBlock *Frontend::materialise_block(std::int32_t offset, bool save_stack) {
     // TODO: Could potentially emit PHIs straight away instead of localising?
     auto &slot = m_block_map.at(offset);
+    if (slot.handler) {
+        // No-one should jump to a handler.
+        // TODO: catch instruction.
+        assert(slot.block == nullptr);
+        slot.block = m_function->append_block();
+        return slot.block;
+    }
+
     if (slot.block == nullptr) {
         assert(slot.entry_stack.empty());
         slot.block = m_function->append_block();
         if (!m_stack.empty()) {
             // Localise stack.
+            assert(save_stack);
             slot.entry_stack.ensure_capacity(m_stack.size());
             for (auto *value : m_stack) {
                 auto *local = m_function->append_local(value->type());
@@ -141,7 +150,7 @@ ir::BasicBlock *Frontend::materialise_block(std::int32_t offset) {
             }
         }
         m_queue.push_back(offset);
-    } else {
+    } else if (save_stack) {
         assert(m_stack.size() <= slot.entry_stack.size());
         const auto difference = slot.entry_stack.size() - m_stack.size();
         for (std::uint16_t i = 0; i < m_stack.size(); i++) {
@@ -214,22 +223,33 @@ void Frontend::visit_code(CodeAttribute &code) {
         auto pc = m_queue.front();
         m_queue.pop_front();
 
-        auto &info = m_block_map[pc];
-        if (std::exchange(info.visited, true)) {
+        auto &block_info = m_block_map[pc];
+        if (std::exchange(block_info.visited, true)) {
             continue;
         }
 
         assert(pc == 0 || m_block->has_terminator());
-        m_block = materialise_block(pc);
+        m_block = materialise_block(pc, /*save_stack*/ false);
 
         // Clear stack; materialise_block will have localised any stack variables into the entry stack.
         m_stack.clear();
 
+        if (block_info.handler) {
+            m_stack.push(m_block->append<ir::NewInst>(m_context->reference_type(block_info.handler_type)));
+        }
+
         // Load entry stack.
-        const auto &entry_stack = m_block_map.at(pc).entry_stack;
-        for (auto *local : entry_stack) {
+        for (auto *local : block_info.entry_stack) {
             auto *value = m_block->append<ir::LoadInst>(local->type(), local);
             m_stack.push(value);
+        }
+
+        // Copy arguments to locals.
+        if (pc == 0) {
+            for (std::uint32_t i = 0; auto *argument : m_function->arguments()) {
+                auto *local = materialise_local(i++);
+                m_block->append<ir::StoreInst>(local, argument);
+            }
         }
 
         do {
@@ -238,13 +258,33 @@ void Frontend::visit_code(CodeAttribute &code) {
 
         // Insert immediate jump if needed.
         if (!m_block->has_terminator()) {
-            m_block->append<ir::BranchInst>(materialise_block(pc));
+            m_block->append<ir::BranchInst>(materialise_block(pc, /*save_stack*/ true));
         }
 
         if (auto *branch = m_block->insts().last()->as<ir::BranchInst>()) {
             if (branch->is_conditional()) {
                 m_block_map[pc].block = branch->false_target();
-                m_queue.push_back(pc);
+                m_queue.push_front(pc);
+
+                // TODO: Don't search like this.
+                const Stack *src_stack = nullptr;
+                for (const auto &[_, _info] : m_block_map) {
+                    if (_info.block == branch->true_target()) {
+                        src_stack = &_info.entry_stack;
+                    }
+                }
+
+                if (src_stack == nullptr) {
+                    continue;
+                }
+
+                auto &dst_stack = m_block_map[pc].entry_stack;
+                // TODO: clear??
+                dst_stack.clear();
+                dst_stack.ensure_capacity(src_stack->size());
+                for (auto *local : *src_stack) {
+                    dst_stack.push(local);
+                }
             }
         }
     }
@@ -253,8 +293,8 @@ void Frontend::visit_code(CodeAttribute &code) {
 void Frontend::visit_exception_range(std::int32_t, std::int32_t, std::int32_t handler_pc, StringView type_name) {
     // TODO: catch instruction, not right at all.
     auto &handler_info = m_block_map[handler_pc];
-    handler_info.block = m_function->append_block();
-    handler_info.entry_stack.push(handler_info.block->append<ir::NewInst>(m_context->reference_type(type_name)));
+    handler_info.handler = true;
+    handler_info.handler_type = type_name;
     m_queue.push_back(handler_pc);
 }
 
@@ -275,21 +315,11 @@ void Frontend::visit_constant(Constant constant) {
 }
 
 void Frontend::visit_load(BaseType base_type, std::uint8_t local_index) {
-    if (local_index < m_function->parameter_count()) {
-        m_stack.push(m_function->argument(local_index));
-        return;
-    }
-
     ir::Type *type = lower_base_type(base_type);
     m_stack.push(m_block->append<ir::LoadInst>(type, materialise_local(local_index)));
 }
 
 void Frontend::visit_store(BaseType, std::uint8_t local_index) {
-    if (local_index < m_function->parameter_count()) {
-        // TODO: Handle assigns to arguments.
-        assert(false);
-    }
-
     ir::Value *value = m_stack.take_last();
     m_block->append<ir::StoreInst>(materialise_local(local_index), value);
 }
@@ -316,8 +346,9 @@ void Frontend::visit_array_store(BaseType) {
     m_block->append<ir::StoreArrayInst>(array_ref, index, value);
 }
 
-void Frontend::visit_cast(BaseType, BaseType) {
-    assert(false);
+void Frontend::visit_cast(BaseType, BaseType to_type) {
+    ir::Value *value = m_stack.take_last();
+    m_stack.push(m_block->append<ir::CastInst>(lower_base_type(to_type), value));
 }
 
 void Frontend::visit_compare(BaseType base_type, bool greater_on_nan) {
@@ -327,7 +358,7 @@ void Frontend::visit_compare(BaseType base_type, bool greater_on_nan) {
     m_stack.push(m_block->append<ir::JavaCompareInst>(type, lhs, rhs, greater_on_nan));
 }
 
-void Frontend::visit_new(StringView descriptor) {
+void Frontend::visit_new(StringView descriptor, std::uint8_t dimensions) {
     ir::Type *type = parse_type(descriptor);
     if (type->kind() != ir::TypeKind::Array) {
         // NEW
@@ -336,10 +367,13 @@ void Frontend::visit_new(StringView descriptor) {
     }
 
     // Else one of NEWARRAY, ANEWARRAY, MULTIANEWARRAY.
-    std::uint8_t dimensions = 0;
+#ifndef NDEBUG
+    std::uint8_t type_dimensions = 0;
     for (auto *ty = type; ty->kind() == ir::TypeKind::Array; ty = static_cast<ir::ArrayType *>(ty)->element_type()) {
-        dimensions++;
+        type_dimensions++;
     }
+    assert(dimensions <= type_dimensions);
+#endif
 
     // TODO(small-vector)
     Vector<ir::Value *> counts(dimensions);
@@ -416,13 +450,26 @@ static ir::BinaryOp lower_binary_math_op(MathOp math_op) {
 
 void Frontend::visit_math_op(BaseType base_type, MathOp math_op) {
     // Use base_type in case one or both of lhs and rhs is any type.
+    ir::Type *type = lower_base_type(base_type);
     ir::Value *rhs = m_stack.take_last();
+    if (math_op == MathOp::Neg) {
+        m_stack.push(m_block->append<ir::NegateInst>(type, rhs));
+        return;
+    }
     ir::Value *lhs = m_stack.take_last();
-    m_stack.push(m_block->append<ir::BinaryInst>(lower_base_type(base_type), lower_binary_math_op(math_op), lhs, rhs));
+    m_stack.push(m_block->append<ir::BinaryInst>(type, lower_binary_math_op(math_op), lhs, rhs));
 }
 
-void Frontend::visit_monitor_op(MonitorOp) {
-    assert(false);
+void Frontend::visit_monitor_op(MonitorOp monitor_op) {
+    ir::Value *object_ref = m_stack.take_last();
+    switch (monitor_op) {
+    case MonitorOp::Enter:
+        m_block->append<ir::MonitorInst>(ir::MonitorOp::Enter, object_ref);
+        break;
+    case MonitorOp::Exit:
+        m_block->append<ir::MonitorInst>(ir::MonitorOp::Exit, object_ref);
+        break;
+    }
 }
 
 void Frontend::visit_reference_op(ReferenceOp reference_op) {
@@ -457,17 +504,84 @@ void Frontend::visit_stack_op(StackOp stack_op) {
         m_stack.push(last);
         break;
     }
+    case StackOp::DupX1: {
+        ir::Value *value1 = m_stack.take_last();
+        ir::Value *value2 = m_stack.take_last();
+        m_stack.push(value1);
+        m_stack.push(value2);
+        m_stack.push(value1);
+        break;
+    }
+    case StackOp::DupX2: {
+        ir::Value *value1 = m_stack.take_last();
+        ir::Value *value2 = m_stack.take_last();
+        ir::Value *value3 = nullptr;
+        if (!m_stack.empty()) {
+            value3 = m_stack.take_last();
+        }
+        m_stack.push(value1);
+        if (value3 != nullptr) {
+            m_stack.push(value3);
+        }
+        m_stack.push(value2);
+        m_stack.push(value1);
+        break;
+    }
+    case StackOp::Dup2: {
+        ir::Value *value1 = m_stack.take_last();
+        ir::Value *value2 = nullptr;
+        if (!m_stack.empty()) {
+            value2 = m_stack.take_last();
+        }
+        if (value2 != nullptr) {
+            m_stack.push(value2);
+        }
+        m_stack.push(value1);
+        if (value2 != nullptr) {
+            m_stack.push(value2);
+        }
+        m_stack.push(value1);
+        break;
+    }
+    case StackOp::Dup2X1: {
+        ir::Value *value1 = m_stack.take_last();
+        ir::Value *value2 = m_stack.take_last();
+        ir::Value *value3 = nullptr;
+        if (!m_stack.empty()) {
+            value3 = m_stack.take_last();
+        }
+
+        if (value3 != nullptr) {
+            m_stack.push(value2);
+        }
+        m_stack.push(value1);
+        if (value3 != nullptr) {
+            m_stack.push(value3);
+        }
+        m_stack.push(value2);
+        m_stack.push(value1);
+        break;
+    }
     default:
         assert(false);
     }
 }
 
-void Frontend::visit_type_op(TypeOp, StringView) {
-    assert(false);
+void Frontend::visit_type_op(TypeOp type_op, StringView descriptor) {
+    ir::Type *check_type = parse_type(descriptor);
+    ir::Value *value = m_stack.take_last();
+    switch (type_op) {
+    case TypeOp::CheckCast:
+        m_stack.push(m_block->append<ir::CastInst>(check_type, value));
+        break;
+    case TypeOp::InstanceOf:
+        m_stack.push(m_block->append<ir::InstanceOfInst>(check_type, value));
+        break;
+    }
 }
 
 void Frontend::visit_iinc(std::uint8_t local_index, std::int32_t increment) {
-    auto *local = m_local_map.at(local_index);
+    auto *local = materialise_local(local_index);
     auto *type = m_context->int_type(32);
     auto *value = m_block->append<ir::LoadInst>(type, local);
     auto *constant = m_context->constant_int(type, increment);
@@ -476,7 +590,7 @@ void Frontend::visit_iinc(std::uint8_t local_index, std::int32_t increment) {
 }
 
 void Frontend::visit_goto(std::int32_t offset) {
-    m_block->append<ir::BranchInst>(materialise_block(offset));
+    m_block->append<ir::BranchInst>(materialise_block(offset, /*save_stack*/ true));
 
     // Fully clear the stack after a GOTO, there is no fallthrough to the next instruction.
     m_stack.clear();
@@ -485,8 +599,10 @@ void Frontend::visit_goto(std::int32_t offset) {
 static ir::CompareOp lower_compare_op(CompareOp compare_op) {
     switch (compare_op) {
     case CompareOp::Equal:
+    case CompareOp::ReferenceEqual:
         return ir::CompareOp::Equal;
     case CompareOp::NotEqual:
+    case CompareOp::ReferenceNotEqual:
         return ir::CompareOp::NotEqual;
     case CompareOp::LessThan:
         return ir::CompareOp::LessThan;
@@ -505,6 +621,8 @@ void Frontend::visit_if_compare(CompareOp compare_op, std::int32_t true_offset, 
     ir::Value *rhs = nullptr;
     if (compare_rhs == CompareRhs::Stack) {
         rhs = m_stack.take_last();
+    } else if (compare_rhs == CompareRhs::Null) {
+        rhs = m_context->constant_null();
     }
     ir::Value *lhs = m_stack.take_last();
     if (rhs == nullptr) {
@@ -513,7 +631,7 @@ void Frontend::visit_if_compare(CompareOp compare_op, std::int32_t true_offset, 
     }
 
     auto *false_target = m_function->append_block();
-    auto *true_target = materialise_block(true_offset);
+    auto *true_target = materialise_block(true_offset, /*save_stack*/ true);
     auto *compare = m_block->append<ir::CompareInst>(lower_compare_op(compare_op), lhs, rhs);
     m_block->append<ir::BranchInst>(true_target, false_target, compare);
 }
@@ -522,12 +640,13 @@ template <typename F>
 void Frontend::emit_switch(std::size_t case_count, std::int32_t default_pc, F next_case) {
     ir::Value *key_value = m_stack.take_last();
     auto *key_type = static_cast<ir::IntType *>(key_value->type());
-    auto *default_target = materialise_block(default_pc);
+    auto *default_target = materialise_block(default_pc, /*save_stack*/ true);
 
     Vector<std::pair<ir::Value *, ir::BasicBlock *>> targets(case_count);
     for (std::size_t i = 0; i < case_count; i++) {
         const auto [case_value, offset] = next_case();
-        targets[i] = std::make_pair(m_context->constant_int(key_type, case_value), materialise_block(offset));
+        targets[i] = std::make_pair(m_context->constant_int(key_type, case_value),
+                                    materialise_block(offset, /*save_stack*/ true));
     }
     m_block->append<ir::SwitchInst>(key_value, default_target, targets.span());
 }
