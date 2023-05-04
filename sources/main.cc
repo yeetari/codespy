@@ -43,6 +43,7 @@ int main(int, char **argv) {
                     function->destroy();
                 }
             }
+            free(data);
         }
     }
     mz_zip_reader_end(&zip_archive);
