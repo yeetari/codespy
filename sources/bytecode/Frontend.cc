@@ -261,30 +261,41 @@ void Frontend::visit_code(CodeAttribute &code) {
             m_block->append<ir::BranchInst>(materialise_block(pc, /*save_stack*/ true));
         }
 
-        if (auto *branch = m_block->insts().last()->as<ir::BranchInst>()) {
-            if (branch->is_conditional()) {
-                m_block_map[pc].block = branch->false_target();
-                m_queue.push_front(pc);
+        // Materialise false target if needed.
+        if (auto *branch = m_block->terminator()->as<ir::BranchInst>()) {
+            if (!branch->is_conditional()) {
+                continue;
+            }
 
-                // TODO: Don't search like this.
-                const Stack *src_stack = nullptr;
-                for (const auto &[_, _info] : m_block_map) {
-                    if (_info.block == branch->true_target()) {
-                        src_stack = &_info.entry_stack;
-                    }
-                }
+            // Ensure we process the false target (the fallthrough) next.
+            m_queue.push_front(pc);
 
-                if (src_stack == nullptr) {
-                    continue;
-                }
+            if (m_block_map[pc].block != nullptr) {
+                auto *false_target = branch->false_target();
+                false_target->replace_all_uses_with(m_block_map[pc].block);
+                false_target->remove_from_parent();
+                continue;
+            }
 
-                auto &dst_stack = m_block_map[pc].entry_stack;
-                // TODO: clear??
-                dst_stack.clear();
-                dst_stack.ensure_capacity(src_stack->size());
-                for (auto *local : *src_stack) {
-                    dst_stack.push(local);
+            m_block_map[pc].block = branch->false_target();
+
+            // TODO: Don't search like this.
+            const Stack *src_stack = nullptr;
+            for (const auto &[_, _info] : m_block_map) {
+                if (_info.block == branch->true_target()) {
+                    src_stack = &_info.entry_stack;
                 }
+            }
+
+            if (src_stack == nullptr) {
+                continue;
+            }
+
+            auto &dst_stack = m_block_map[pc].entry_stack;
+            assert(dst_stack.empty());
+            dst_stack.ensure_capacity(src_stack->size());
+            for (auto *local : *src_stack) {
+                dst_stack.push(local);
             }
         }
     }
