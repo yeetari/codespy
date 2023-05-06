@@ -76,6 +76,7 @@ public:
 
     bool is_terminator() const;
     Opcode opcode() const { return m_opcode; }
+    BasicBlock *parent() const { return m_parent; }
     bool has_operands() const { return m_operands != nullptr; }
 };
 

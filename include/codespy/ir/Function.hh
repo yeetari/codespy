@@ -38,6 +38,7 @@ public:
     BasicBlock *append_block();
     Local *append_local(Type *type);
     Argument *argument(std::size_t index);
+    List<BasicBlock>::iterator remove_block(BasicBlock *block);
 
     FunctionType *function_type() const;
     std::uint32_t parameter_count() const;

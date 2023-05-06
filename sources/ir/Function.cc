@@ -17,7 +17,7 @@ Function::Function(Context &context, String name, FunctionType *type)
 }
 
 BasicBlock *Function::append_block() {
-    return m_blocks.emplace<BasicBlock>(m_blocks.end(), m_context);
+    return m_blocks.emplace<BasicBlock>(m_blocks.end(), m_context, this);
 }
 
 Local *Function::append_local(Type *type) {
@@ -28,6 +28,10 @@ Argument *Function::argument(std::size_t index) {
     auto it = m_arguments.begin();
     std::advance(it, index);
     return *it;
+}
+
+List<BasicBlock>::iterator Function::remove_block(BasicBlock *block) {
+    return m_blocks.erase(List<BasicBlock>::iterator(block));
 }
 
 FunctionType *Function::function_type() const {

@@ -9,15 +9,17 @@
 namespace codespy::ir {
 
 class Context;
+class Function;
 
 class BasicBlock : public Value, public ListNode {
     Context &m_context;
+    Function *m_parent;
     List<Instruction> m_insts;
 
 public:
     static constexpr auto k_kind = ValueKind::BasicBlock;
 
-    explicit BasicBlock(Context &context);
+    BasicBlock(Context &context, Function *parent);
 
     using iterator = decltype(m_insts)::iterator;
     iterator begin() const { return m_insts.begin(); }
@@ -32,8 +34,11 @@ public:
     template <HasOpcode Inst, typename... Args>
     Inst *append(Args &&...args);
     iterator remove(Instruction *inst);
+    List<BasicBlock>::iterator remove_from_parent();
 
     bool has_terminator() const;
+    Instruction *terminator() const;
+
     Context &context() const { return m_context; }
     const List<Instruction> &insts() { return m_insts; }
 };
