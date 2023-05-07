@@ -70,6 +70,8 @@ public:
 
     void accept(Visitor &visitor);
     void remove_from_parent();
+    BasicBlock *successor(unsigned index) const;
+    unsigned successor_count() const;
 
     template <HasOpcode T>
     T *as();

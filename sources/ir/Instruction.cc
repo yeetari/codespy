@@ -29,6 +29,30 @@ void Instruction::remove_from_parent() {
     m_parent->remove(this);
 }
 
+// TODO: This should probably be defined on the relevant subclasses.
+BasicBlock *Instruction::successor(unsigned index) const {
+    if (const auto *branch = as<BranchInst>()) {
+        return index == 0 ? branch->true_target() : branch->false_target();
+    }
+    if (const auto *switch_inst = as<SwitchInst>()) {
+        if (index == 0) {
+            return switch_inst->default_target();
+        }
+        return switch_inst->case_target(index - 1);
+    }
+    codespy::unreachable();
+}
+
+unsigned int Instruction::successor_count() const {
+    if (const auto *branch = as<BranchInst>()) {
+        return branch->is_conditional() ? 2 : 1;
+    }
+    if (const auto *switch_inst = as<SwitchInst>()) {
+        return switch_inst->case_count() + 1;
+    }
+    return 0;
+}
+
 bool Instruction::is_terminator() const {
     switch (m_opcode) {
 #define TERM_INST(opcode, Class) case opcode:
