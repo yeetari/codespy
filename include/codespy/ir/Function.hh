@@ -40,6 +40,7 @@ public:
     Argument *argument(std::size_t index);
     List<BasicBlock>::iterator remove_block(BasicBlock *block);
 
+    BasicBlock *entry_block() const;
     FunctionType *function_type() const;
     std::uint32_t parameter_count() const;
     Context &context() const { return m_context; }

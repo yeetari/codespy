@@ -4,6 +4,7 @@ target_sources(codespy PRIVATE
     bytecode/Frontend.cc
     ir/BasicBlock.cc
     ir/Context.cc
+    ir/Dominance.cc
     ir/Dumper.cc
     ir/Function.cc
     ir/Instruction.cc

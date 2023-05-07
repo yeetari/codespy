@@ -34,6 +34,11 @@ List<BasicBlock>::iterator Function::remove_block(BasicBlock *block) {
     return m_blocks.erase(List<BasicBlock>::iterator(block));
 }
 
+BasicBlock *Function::entry_block() const {
+    assert(!m_blocks.empty());
+    return m_blocks.first();
+}
+
 FunctionType *Function::function_type() const {
     return static_cast<FunctionType *>(type());
 }
