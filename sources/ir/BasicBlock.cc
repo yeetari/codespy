@@ -13,6 +13,7 @@ BasicBlock::iterator BasicBlock::remove(Instruction *inst) {
 }
 
 List<BasicBlock>::iterator BasicBlock::remove_from_parent() {
+    assert(user_begin() == user_end());
     return m_parent->remove_block(this);
 }
 

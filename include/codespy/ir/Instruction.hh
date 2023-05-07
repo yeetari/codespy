@@ -49,7 +49,11 @@ class Instruction : public Value, public ListNode {
 protected:
     Instruction(Opcode opcode, BasicBlock *parent, Type *type, unsigned operand_count)
         : Value(k_kind, type), m_opcode(opcode), m_parent(parent),
-          m_operands(operand_count != 0 ? new Use[operand_count] : nullptr) {}
+          m_operands(operand_count != 0 ? new Use[operand_count] : nullptr) {
+        for (unsigned i = 0; i < operand_count; i++) {
+            m_operands[i].set_owner(this);
+        }
+    }
     ~Instruction();
 
     Value *operand(unsigned index) const;
