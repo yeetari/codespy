@@ -45,7 +45,7 @@ String type_string(Type *type) {
     case TypeKind::Integer:
         return codespy::format("i{}", static_cast<IntType *>(type)->bit_width());
     case TypeKind::Reference:
-        return static_cast<ReferenceType *>(type)->class_name();
+        return codespy::format("#{}", static_cast<ReferenceType *>(type)->class_name());
     default:
         assert(false);
     }
