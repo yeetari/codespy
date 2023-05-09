@@ -9,6 +9,7 @@ target_sources(codespy PRIVATE
     ir/Function.cc
     ir/Instruction.cc
     ir/Instructions.cc
+    ir/Java.cc
     ir/Value.cc
     support/Print.cc
     support/Stream.cc

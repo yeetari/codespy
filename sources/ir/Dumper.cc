@@ -86,7 +86,8 @@ String Dumper::value_string(Value *value) {
         return codespy::format("{} \"{}\"", type_string(constant->type()), constant->value());
     }
     if (auto *function = value->as<Function>()) {
-        return codespy::format("{} @{}", type_string(function->function_type()->return_type()), function->name());
+        return codespy::format("{} @{}", type_string(function->function_type()->return_type()),
+                               function->display_name());
     }
     if (auto *local = value->as<Local>()) {
         return codespy::format("{} %l{}", type_string(local->type()), m_local_map.at(local));
@@ -96,7 +97,7 @@ String Dumper::value_string(Value *value) {
 
 void Dumper::run_on(Function *function) {
     m_function = function;
-    m_sb.append("{} @{}(", type_string(function->function_type()->return_type()), function->name());
+    m_sb.append("{} @{}(", type_string(function->function_type()->return_type()), function->display_name());
     for (std::size_t i = 0; auto *argument : function->arguments()) {
         if (i != 0) {
             m_sb.append(", ");

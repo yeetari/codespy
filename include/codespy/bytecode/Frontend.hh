@@ -14,6 +14,8 @@ class BasicBlock;
 class Context;
 class Function;
 class FunctionType;
+class JavaClass;
+class JavaField;
 class Type;
 class Value;
 
@@ -32,12 +34,16 @@ class Frontend : public ClassVisitor, public CodeVisitor {
     };
 
 private:
-    UniquePtr<ir::Context> m_context;
-    StringView m_this_name;
+    ir::Context &m_context;
+    // TODO: Make key StringView to avoid copies.
+    std::unordered_map<String, ir::JavaClass> m_class_map;
+
+    ir::JavaClass *m_class;
     ir::Function *m_function;
     ir::BasicBlock *m_block;
+    // TODO: Some kind of sparse storage.
     std::unordered_map<std::int32_t, BlockInfo> m_block_map;
-    std::unordered_map<String, ir::Function *> m_function_map;
+    // TODO: Can probably be a vector.
     std::unordered_map<std::uint16_t, ir::Value *> m_local_map;
     std::deque<std::int32_t> m_queue;
     Stack m_stack;
@@ -45,7 +51,8 @@ private:
     ir::Type *lower_base_type(BaseType base_type);
     ir::Type *parse_type(StringView descriptor, std::size_t *length = nullptr);
     ir::FunctionType *parse_function_type(StringView descriptor, ir::Type *this_type);
-    ir::Function *materialise_function(StringView owner, StringView name, StringView descriptor, ir::Type *this_type);
+
+    ir::JavaClass *ensure_class(StringView name);
     ir::BasicBlock *materialise_block(std::int32_t offset, bool save_stack);
     ir::Value *materialise_local(std::uint16_t index);
 
@@ -53,7 +60,7 @@ private:
     void emit_switch(std::size_t case_count, std::int32_t default_pc, F next_case);
 
 public:
-    Frontend();
+    explicit Frontend(ir::Context &context) : m_context(context) {}
     Frontend(const Frontend &) = delete;
     Frontend(Frontend &&) = delete;
     ~Frontend();
@@ -92,7 +99,7 @@ public:
     void visit_lookup_switch(std::int32_t default_pc, Span<std::pair<std::int32_t, std::int32_t>> table) override;
     void visit_return(BaseType type) override;
 
-    Vector<ir::Function *> functions();
+    std::unordered_map<String, ir::JavaClass> &class_map() { return m_class_map; }
 };
 
 } // namespace codespy::bc

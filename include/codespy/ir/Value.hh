@@ -63,6 +63,7 @@ enum class ValueKind : std::uint8_t {
     ConstantString,
     Function,
     Instruction,
+    JavaField,
     Local,
 };
 

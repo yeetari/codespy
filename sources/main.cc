@@ -3,11 +3,14 @@
 #include <codespy/bytecode/Frontend.hh>
 #include <codespy/bytecode/Visitor.hh>
 #include <codespy/container/Vector.hh>
+#include <codespy/ir/Context.hh>
 #include <codespy/ir/Dumper.hh>
 #include <codespy/ir/Function.hh>
+#include <codespy/ir/Java.hh>
 #include <codespy/support/Enum.hh>
 #include <codespy/support/Print.hh>
 #include <codespy/support/SpanStream.hh>
+#include <codespy/support/StringBuilder.hh>
 
 #include <fstream>
 #include <iostream>
@@ -16,6 +19,9 @@
 using namespace codespy;
 
 int main(int, char **argv) {
+    ir::Context context;
+    bc::Frontend frontend(context);
+
     mz_zip_archive zip_archive{};
     mz_zip_reader_init_file(&zip_archive, argv[1], 0);
     const auto zip_entry_count = mz_zip_reader_get_num_files(&zip_archive);
@@ -26,25 +32,17 @@ int main(int, char **argv) {
         if (name.ends_with(".class")) {
             std::size_t size;
             void *data = mz_zip_reader_extract_to_heap(&zip_archive, i, &size, 0);
-            {
-                SpanStream stream(codespy::make_span(static_cast<std::uint8_t *>(data), size));
-                bc::Dumper dumper;
-                CODESPY_EXPECT(bc::parse_class(stream, dumper));
-            }
-            codespy::print('\n');
-            {
-                SpanStream stream(codespy::make_span(static_cast<std::uint8_t *>(data), size));
-                bc::Frontend frontend;
-                CODESPY_EXPECT(bc::parse_class(stream, frontend));
-                for (auto *function : frontend.functions()) {
-                    codespy::println(ir::dump_code(function));
-                }
-                for (auto *function : frontend.functions()) {
-                    function->destroy();
-                }
-            }
+            SpanStream stream(codespy::make_span(static_cast<std::uint8_t *>(data), size));
+            CODESPY_EXPECT(bc::parse_class(stream, frontend));
             free(data);
         }
     }
     mz_zip_reader_end(&zip_archive);
+
+    auto class_map = std::move(frontend.class_map());
+    for (const auto &[name, clazz] : class_map) {
+        for (auto *function : clazz.methods()) {
+            codespy::println(ir::dump_code(function));
+        }
+    }
 }

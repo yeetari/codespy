@@ -1,6 +1,7 @@
 #include <codespy/ir/Function.hh>
 
 #include <codespy/ir/Type.hh>
+#include <codespy/support/Format.hh>
 
 namespace codespy::ir {
 
@@ -32,6 +33,10 @@ Argument *Function::argument(std::size_t index) {
 
 List<BasicBlock>::iterator Function::remove_block(BasicBlock *block) {
     return m_blocks.erase(List<BasicBlock>::iterator(block));
+}
+
+void Function::set_name_prefix(String name_prefix) {
+    m_display_name = codespy::format("{}.{}", name_prefix, m_name);
 }
 
 BasicBlock *Function::entry_block() const {

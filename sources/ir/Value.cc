@@ -5,6 +5,7 @@
 #include <codespy/ir/Function.hh>
 #include <codespy/ir/Instruction.hh>
 #include <codespy/ir/Instructions.hh>
+#include <codespy/ir/Java.hh>
 
 #include <utility>
 
@@ -72,6 +73,9 @@ void Value::destroy() {
         }
         break;
     }
+    case ValueKind::JavaField:
+        delete as<JavaField>();
+        break;
     case ValueKind::Local:
         delete as<Local>();
         break;
