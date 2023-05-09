@@ -3,7 +3,10 @@
 #include <codespy/bytecode/Frontend.hh>
 #include <codespy/bytecode/Visitor.hh>
 #include <codespy/container/Vector.hh>
+#include <codespy/gui/MainWindow.hh>
+#include <codespy/ir/Cfg.hh>
 #include <codespy/ir/Context.hh>
+#include <codespy/ir/Dominance.hh>
 #include <codespy/ir/Dumper.hh>
 #include <codespy/ir/Function.hh>
 #include <codespy/ir/Java.hh>
@@ -12,13 +15,14 @@
 #include <codespy/support/SpanStream.hh>
 #include <codespy/support/StringBuilder.hh>
 
+#include <QApplication>
 #include <fstream>
 #include <iostream>
 #include <miniz/miniz.h>
 
 using namespace codespy;
 
-int main(int, char **argv) {
+int main(int argc, char **argv) {
     ir::Context context;
     bc::Frontend frontend(context);
 
@@ -40,9 +44,17 @@ int main(int, char **argv) {
     mz_zip_reader_end(&zip_archive);
 
     auto class_map = std::move(frontend.class_map());
+    StringBuilder sb;
     for (const auto &[name, clazz] : class_map) {
         for (auto *function : clazz.methods()) {
-            codespy::println(ir::dump_code(function));
+            sb.append(ir::dump_code(function));
+            sb.append('\n');
         }
     }
+
+    auto string = sb.build();
+    QApplication application(argc, argv);
+    gui::MainWindow window(QString::fromUtf8(string.data(), string.length()));
+    window.show();
+    return QApplication::exec();
 }
