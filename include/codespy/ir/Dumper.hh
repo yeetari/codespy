@@ -1,9 +1,11 @@
 #pragma once
 
+#include <codespy/support/String.hh>
+
 namespace codespy::ir {
 
 class Function;
 
-void dump_code(Function *function);
+String dump_code(Function *function);
 
 } // namespace codespy::ir

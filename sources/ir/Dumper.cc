@@ -7,7 +7,9 @@
 #include <codespy/ir/Instructions.hh>
 #include <codespy/ir/Type.hh>
 #include <codespy/ir/Visitor.hh>
-#include <codespy/support/Print.hh>
+#include <codespy/support/Format.hh>
+#include <codespy/support/String.hh>
+#include <codespy/support/StringBuilder.hh>
 
 #include <unordered_map>
 
@@ -16,6 +18,7 @@ namespace {
 
 class Dumper final : public Visitor {
     Function *m_function;
+    StringBuilder m_sb;
     std::unordered_map<BasicBlock *, std::size_t> m_block_map;
     std::unordered_map<Local *, std::size_t> m_local_map;
     std::unordered_map<Value *, std::size_t> m_value_map;
@@ -24,6 +27,7 @@ class Dumper final : public Visitor {
 
 public:
     void run_on(Function *function);
+    String build() { return m_sb.build(); }
 
 #define INST(opcode, Class) void visit(Class &) override;
 #include <codespy/ir/Instructions.in>
@@ -92,140 +96,140 @@ String Dumper::value_string(Value *value) {
 
 void Dumper::run_on(Function *function) {
     m_function = function;
-    codespy::print("\n{} @{}(", type_string(function->function_type()->return_type()), function->name());
+    m_sb.append("{} @{}(", type_string(function->function_type()->return_type()), function->name());
     for (std::size_t i = 0; auto *argument : function->arguments()) {
         if (i != 0) {
-            codespy::print(", ");
+            m_sb.append(", ");
         }
-        codespy::print("%a{}: {}", i, type_string(argument->type()));
+        m_sb.append("%a{}: {}", i, type_string(argument->type()));
         i++;
     }
 
     if (function->blocks().empty()) {
-        codespy::println(");");
+        m_sb.append(");\n");
         return;
     }
 
-    codespy::println(") {");
+    m_sb.append(") {\n");
     for (auto *local : function->locals()) {
-        codespy::println("  %l{}: {}", m_local_map.size(), type_string(local->type()));
+        m_sb.append("  %l{}: {}\n", m_local_map.size(), type_string(local->type()));
         m_local_map.emplace(local, m_local_map.size());
     }
     for (auto *block : function->blocks()) {
-        codespy::print("  {}", value_string(block));
-        codespy::println(" {");
+        m_sb.append("  {}", value_string(block));
+        m_sb.append(" {\n");
         for (auto *inst : block->insts()) {
-            codespy::print("    ");
+            m_sb.append("    ");
             if (inst->type() != function->context().void_type()) {
-                codespy::print("%v{} = ", m_value_map.size());
+                m_sb.append("%v{} = ", m_value_map.size());
                 m_value_map.emplace(inst, m_value_map.size());
             }
             inst->accept(*this);
-            codespy::print('\n');
+            m_sb.append('\n');
         }
-        codespy::println("  }");
+        m_sb.append("  }\n");
     }
-    codespy::println("}");
+    m_sb.append("}\n");
 }
 
 void Dumper::visit(ArrayLengthInst &array_length) {
-    codespy::print("array_length {}", value_string(array_length.array_ref()));
+    m_sb.append("array_length {}", value_string(array_length.array_ref()));
 }
 
 void Dumper::visit(BinaryInst &binary) {
     switch (binary.op()) {
     case BinaryOp::Add:
-        codespy::print("add ");
+        m_sb.append("add ");
         break;
     case BinaryOp::Sub:
-        codespy::print("sub ");
+        m_sb.append("sub ");
         break;
     case BinaryOp::Mul:
-        codespy::print("mul ");
+        m_sb.append("mul ");
         break;
     case BinaryOp::Div:
-        codespy::print("div ");
+        m_sb.append("div ");
         break;
     case BinaryOp::Rem:
-        codespy::print("rem ");
+        m_sb.append("rem ");
         break;
     case BinaryOp::Shl:
-        codespy::print("shl ");
+        m_sb.append("shl ");
         break;
     case BinaryOp::Shr:
-        codespy::print("shr ");
+        m_sb.append("shr ");
         break;
     case BinaryOp::UShr:
-        codespy::print("ushr ");
+        m_sb.append("ushr ");
         break;
     case BinaryOp::And:
-        codespy::print("and ");
+        m_sb.append("and ");
         break;
     case BinaryOp::Or:
-        codespy::print("or ");
+        m_sb.append("or ");
         break;
     case BinaryOp::Xor:
-        codespy::print("xor ");
+        m_sb.append("xor ");
         break;
     }
-    codespy::print("{}, {}", value_string(binary.lhs()), value_string(binary.rhs()));
+    m_sb.append("{}, {}", value_string(binary.lhs()), value_string(binary.rhs()));
 }
 
 void Dumper::visit(BranchInst &branch) {
     if (branch.is_conditional()) {
-        codespy::print("br {}, {}, {}", value_string(branch.condition()), value_string(branch.true_target()),
-                       value_string(branch.false_target()));
+        m_sb.append("br {}, {}, {}", value_string(branch.condition()), value_string(branch.true_target()),
+                    value_string(branch.false_target()));
     } else {
-        codespy::print("br {}", value_string(branch.target()));
+        m_sb.append("br {}", value_string(branch.target()));
     }
 }
 
 void Dumper::visit(CallInst &call) {
-    codespy::print("call ");
+    m_sb.append("call ");
     if (call.is_invoke_special()) {
-        codespy::print("special ");
+        m_sb.append("special ");
     }
-    codespy::print("{}(", value_string(call.callee()));
+    m_sb.append("{}(", value_string(call.callee()));
     for (bool first = true; auto *argument : call.arguments()) {
         if (!first) {
-            codespy::print(", ");
+            m_sb.append(", ");
         }
         first = false;
-        codespy::print(value_string(argument));
+        m_sb.append(value_string(argument));
     }
-    codespy::print(")");
+    m_sb.append(')');
 }
 
 void Dumper::visit(CastInst &cast) {
-    codespy::print("cast {} to {}", value_string(cast.value()), type_string(cast.type()));
+    m_sb.append("cast {} to {}", value_string(cast.value()), type_string(cast.type()));
 }
 
 void Dumper::visit(CompareInst &compare) {
     switch (compare.op()) {
     case CompareOp::Equal:
-        codespy::print("cmp_eq ");
+        m_sb.append("cmp_eq ");
         break;
     case CompareOp::NotEqual:
-        codespy::print("cmp_ne ");
+        m_sb.append("cmp_ne ");
         break;
     case CompareOp::LessThan:
-        codespy::print("cmp_lt ");
+        m_sb.append("cmp_lt ");
         break;
     case CompareOp::GreaterThan:
-        codespy::print("cmp_gt ");
+        m_sb.append("cmp_gt ");
         break;
     case CompareOp::LessEqual:
-        codespy::print("cmp_le ");
+        m_sb.append("cmp_le ");
         break;
     case CompareOp::GreaterEqual:
-        codespy::print("cmp_ge ");
+        m_sb.append("cmp_ge ");
         break;
     }
-    codespy::print("{}, {}", value_string(compare.lhs()), value_string(compare.rhs()));
+    m_sb.append("{}, {}", value_string(compare.lhs()), value_string(compare.rhs()));
 }
 
 void Dumper::visit(InstanceOfInst &instance_of) {
-    codespy::print("instance_of {}, {}", value_string(instance_of.value()), type_string(instance_of.check_type()));
+    m_sb.append("instance_of {}, {}", value_string(instance_of.value()), type_string(instance_of.check_type()));
 }
 
 void Dumper::visit(JavaCompareInst &java_compare) {
@@ -233,69 +237,69 @@ void Dumper::visit(JavaCompareInst &java_compare) {
     switch (type_kind) {
     case TypeKind::Integer:
         assert(static_cast<IntType *>(java_compare.operand_type())->bit_width() == 64);
-        codespy::print('l');
+        m_sb.append('l');
         break;
     case TypeKind::Float:
-        codespy::print('f');
+        m_sb.append('f');
         break;
     case TypeKind::Double:
-        codespy::print('d');
+        m_sb.append('d');
         break;
     default:
         assert(false);
     }
 
-    codespy::print("cmp");
+    m_sb.append("cmp");
     if (type_kind == TypeKind::Float || type_kind == TypeKind::Double) {
         if (java_compare.greater_on_nan()) {
-            codespy::print('g');
+            m_sb.append('g');
         } else {
-            codespy::print('l');
+            m_sb.append('l');
         }
     }
-    codespy::print(" {}, {}", value_string(java_compare.lhs()), value_string(java_compare.rhs()));
+    m_sb.append(" {}, {}", value_string(java_compare.lhs()), value_string(java_compare.rhs()));
 }
 
 void Dumper::visit(LoadInst &load) {
-    codespy::print("load {}", value_string(load.pointer()));
+    m_sb.append("load {}", value_string(load.pointer()));
 }
 
 void Dumper::visit(LoadArrayInst &load_array) {
-    codespy::print("load_array {}[{}]", value_string(load_array.array_ref()), value_string(load_array.index()));
+    m_sb.append("load_array {}[{}]", value_string(load_array.array_ref()), value_string(load_array.index()));
 }
 
 void Dumper::visit(LoadFieldInst &load_field) {
-    codespy::print("load_field {} {}.{}", type_string(load_field.type()), load_field.owner(), load_field.name());
+    m_sb.append("load_field {} {}.{}", type_string(load_field.type()), load_field.owner(), load_field.name());
     if (load_field.has_object_ref()) {
-        codespy::print(", on {}", value_string(load_field.object_ref()));
+        m_sb.append(", on {}", value_string(load_field.object_ref()));
     }
 }
 
 void Dumper::visit(MonitorInst &monitor) {
     if (monitor.op() == MonitorOp::Enter) {
-        codespy::print("monitor_enter {}", value_string(monitor.object_ref()));
+        m_sb.append("monitor_enter {}", value_string(monitor.object_ref()));
     } else {
-        codespy::print("monitor_exit {}", value_string(monitor.object_ref()));
+        m_sb.append("monitor_exit {}", value_string(monitor.object_ref()));
     }
 }
 
 void Dumper::visit(NegateInst &negate) {
-    codespy::print("neg {}", value_string(negate.value()));
+    m_sb.append("neg {}", value_string(negate.value()));
 }
 
 void Dumper::visit(NewInst &new_inst) {
-    codespy::print("new {}", type_string(new_inst.type()));
+    m_sb.append("new {}", type_string(new_inst.type()));
 }
 
 void Dumper::visit(NewArrayInst &new_array) {
-    codespy::print("new_array {} [", type_string(new_array.type()));
+    m_sb.append("new_array {} [", type_string(new_array.type()));
     for (std::uint8_t i = 0; i < new_array.dimensions(); i++) {
         if (i != 0) {
-            codespy::print(", ");
+            m_sb.append(", ");
         }
-        codespy::print(value_string(new_array.count(i)));
+        m_sb.append(value_string(new_array.count(i)));
     }
-    codespy::print(']');
+    m_sb.append(']');
 }
 
 void Dumper::visit(PhiInst &) {
@@ -304,46 +308,47 @@ void Dumper::visit(PhiInst &) {
 
 void Dumper::visit(ReturnInst &return_inst) {
     if (return_inst.is_void()) {
-        codespy::print("ret void");
+        m_sb.append("ret void");
         return;
     }
-    codespy::print("ret {}", value_string(return_inst.value()));
+    m_sb.append("ret {}", value_string(return_inst.value()));
 }
 
 void Dumper::visit(StoreInst &store) {
-    codespy::print("store {}, {}", value_string(store.pointer()), value_string(store.value()));
+    m_sb.append("store {}, {}", value_string(store.pointer()), value_string(store.value()));
 }
 
 void Dumper::visit(StoreArrayInst &store_array) {
-    codespy::print("store_array {}[{}], {}", value_string(store_array.array_ref()), value_string(store_array.index()),
-                   value_string(store_array.value()));
+    m_sb.append("store_array {}[{}], {}", value_string(store_array.array_ref()), value_string(store_array.index()),
+                value_string(store_array.value()));
 }
 
 void Dumper::visit(StoreFieldInst &store_field) {
-    codespy::print("store_field {}.{}, {}", store_field.owner(), store_field.name(), value_string(store_field.value()));
+    m_sb.append("store_field {}.{}, {}", store_field.owner(), store_field.name(), value_string(store_field.value()));
     if (store_field.has_object_ref()) {
-        codespy::print(", on {}", value_string(store_field.object_ref()));
+        m_sb.append(", on {}", value_string(store_field.object_ref()));
     }
 }
 
 void Dumper::visit(SwitchInst &switch_inst) {
-    codespy::println("switch {}, {}, [", value_string(switch_inst.value()), value_string(switch_inst.default_target()));
+    m_sb.append("switch {}, {}, [\n", value_string(switch_inst.value()), value_string(switch_inst.default_target()));
     for (unsigned i = 0; i < switch_inst.case_count(); i++) {
-        codespy::println("      {}, {}", value_string(switch_inst.case_value(i)),
-                         value_string(switch_inst.case_target(i)));
+        m_sb.append("      {}, {}\n", value_string(switch_inst.case_value(i)),
+                    value_string(switch_inst.case_target(i)));
     }
-    codespy::print("    ]");
+    m_sb.append("    ]");
 }
 
 void Dumper::visit(ThrowInst &throw_inst) {
-    codespy::print("throw {}", value_string(throw_inst.exception_ref()));
+    m_sb.append("throw {}", value_string(throw_inst.exception_ref()));
 }
 
 } // namespace
 
-void dump_code(Function *function) {
+String dump_code(Function *function) {
     Dumper dumper;
     dumper.run_on(function);
+    return dumper.build();
 }
 
 } // namespace codespy::ir

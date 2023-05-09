@@ -37,7 +37,7 @@ int main(int, char **argv) {
                 bc::Frontend frontend;
                 CODESPY_EXPECT(bc::parse_class(stream, frontend));
                 for (auto *function : frontend.functions()) {
-                    ir::dump_code(function);
+                    codespy::println(ir::dump_code(function));
                 }
                 for (auto *function : frontend.functions()) {
                     function->destroy();
