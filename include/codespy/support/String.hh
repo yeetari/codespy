@@ -45,6 +45,7 @@ public:
     char *disown() { return std::exchange(m_data, nullptr); }
 
     bool operator==(const String &other) const;
+    bool operator==(StringView other) const;
     bool empty() const { return m_length == 0; }
     std::size_t length() const { return m_length; }
 };

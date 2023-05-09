@@ -55,4 +55,8 @@ bool String::operator==(const String &other) const {
     return StringView(m_data, m_length) == StringView(other.m_data, other.m_length);
 }
 
+bool String::operator==(StringView other) const {
+    return StringView(m_data, m_length) == other;
+}
+
 } // namespace codespy
