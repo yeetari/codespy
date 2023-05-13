@@ -23,7 +23,6 @@ class Dumper final : public Visitor {
     Function *m_function;
     StringBuilder m_sb;
     std::unordered_map<BasicBlock *, std::size_t> m_block_map;
-    std::unordered_map<Local *, std::size_t> m_local_map;
     std::unordered_map<Value *, std::size_t> m_value_map;
 
     String value_string(Value *value);
@@ -60,12 +59,7 @@ String type_string(Type *type) {
 
 String Dumper::value_string(Value *value) {
     if (auto *argument = value_cast<Argument>(value)) {
-        auto it = std::find_if(m_function->arguments().begin(), m_function->arguments().end(),
-                               [argument](const Argument *arg) {
-                                   return arg == argument;
-                               });
-        auto index = std::distance(m_function->arguments().begin(), it);
-        return codespy::format("{} %a{}", type_string(argument->type()), index);
+        return codespy::format("{} %a{}", type_string(argument->type()), argument->index());
     }
     if (auto *block = value_cast<BasicBlock>(value)) {
         return codespy::format("L{}", m_block_map.at(block));
@@ -90,7 +84,7 @@ String Dumper::value_string(Value *value) {
                                function->display_name());
     }
     if (auto *local = value_cast<Local>(value)) {
-        return codespy::format("{} %l{}", type_string(local->type()), m_local_map.at(local));
+        return codespy::format("{} %l{}", type_string(local->type()), local->index());
     }
     return codespy::format("{} %v{}", type_string(value->type()), m_value_map.at(value));
 }
@@ -107,12 +101,11 @@ void dfs(Vector<BasicBlock *> &post_order, std::unordered_set<BasicBlock *> &vis
 void Dumper::run_on(Function *function) {
     m_function = function;
     m_sb.append("{} @{}(", type_string(function->function_type()->return_type()), function->display_name());
-    for (std::size_t i = 0; auto *argument : function->arguments()) {
-        if (i != 0) {
+    for (auto *argument : function->arguments()) {
+        if (argument->index() != 0) {
             m_sb.append(", ");
         }
-        m_sb.append("%a{}: {}", i, type_string(argument->type()));
-        i++;
+        m_sb.append("%a{}: {}", argument->index(), type_string(argument->type()));
     }
 
     if (function->blocks().empty()) {
@@ -138,8 +131,7 @@ void Dumper::run_on(Function *function) {
 
     m_sb.append(") {\n");
     for (auto *local : function->locals()) {
-        m_sb.append("  %l{}: {}\n", m_local_map.size(), type_string(local->type()));
-        m_local_map.emplace(local, m_local_map.size());
+        m_sb.append("  %l{}: {}\n", local->index(), type_string(local->type()));
     }
     for (auto *block : block_order) {
         m_sb.append("  {}", value_string(block));

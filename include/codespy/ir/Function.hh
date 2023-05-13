@@ -10,17 +10,25 @@ class Context;
 class FunctionType;
 
 class Argument : public Value, public ListNode {
+    const std::uint8_t m_index;
+
 public:
     static constexpr auto k_kind = ValueKind::Argument;
 
-    explicit Argument(Type *type);
+    Argument(Type *type, std::uint8_t index);
+
+    std::uint8_t index() const { return m_index; }
 };
 
 class Local : public Value, public ListNode {
+    const unsigned m_index;
+
 public:
     static constexpr auto k_kind = ValueKind::Local;
 
-    explicit Local(Type *type);
+    Local(Type *type, unsigned index);
+
+    unsigned index() const { return m_index; }
 };
 
 class Function : public Value, public ListNode {
@@ -49,8 +57,8 @@ public:
     const String &name() const { return m_name; }
     const String &display_name() const { return m_display_name; }
     const List<Argument> &arguments() const { return m_arguments; }
-    const List<Local> &locals() const { return m_locals; }
     const List<BasicBlock> &blocks() const { return m_blocks; }
+    const List<Local> &locals() const { return m_locals; }
 };
 
 } // namespace codespy::ir

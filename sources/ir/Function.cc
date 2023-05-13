@@ -5,15 +5,15 @@
 
 namespace codespy::ir {
 
-Argument::Argument(Type *type) : Value(k_kind, type) {}
+Argument::Argument(Type *type, std::uint8_t index) : Value(k_kind, type), m_index(index) {}
 
-Local::Local(Type *type) : Value(k_kind, type) {}
+Local::Local(Type *type, unsigned index) : Value(k_kind, type), m_index(index) {}
 
 // TODO: Get context from type.
 Function::Function(Context &context, String name, FunctionType *type)
     : Value(k_kind, type), m_context(context), m_name(std::move(name)) {
-    for (auto *parameter_type : type->parameter_types()) {
-        m_arguments.emplace<Argument>(m_arguments.end(), parameter_type);
+    for (std::uint8_t index = 0; auto *parameter_type : type->parameter_types()) {
+        m_arguments.emplace<Argument>(m_arguments.end(), parameter_type, index++);
     }
 }
 
@@ -22,7 +22,7 @@ BasicBlock *Function::append_block() {
 }
 
 Local *Function::append_local(Type *type) {
-    return m_locals.emplace<Local>(m_locals.end(), type);
+    return m_locals.emplace<Local>(m_locals.end(), type, m_locals.size_slow());
 }
 
 Argument *Function::argument(std::size_t index) {
