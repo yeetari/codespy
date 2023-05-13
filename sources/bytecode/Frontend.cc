@@ -240,6 +240,10 @@ void Frontend::visit_code(CodeAttribute &code) {
         if (pc == 0) {
             for (std::uint32_t i = 0; auto *argument : m_function->arguments()) {
                 auto *local = materialise_local(i++);
+                if (argument->type() == m_context.int_type(64) || argument->type() == m_context.double_type()) {
+                    // Longs and doubles take up two local slots in bytecode.
+                    i++;
+                }
                 m_block->append<ir::StoreInst>(local, argument);
             }
         }
