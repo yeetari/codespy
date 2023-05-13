@@ -1,6 +1,8 @@
 #include <codespy/ir/Dumper.hh>
 
+#include <codespy/container/Vector.hh>
 #include <codespy/ir/BasicBlock.hh>
+#include <codespy/ir/Cfg.hh>
 #include <codespy/ir/Constant.hh>
 #include <codespy/ir/Context.hh>
 #include <codespy/ir/Function.hh>
@@ -12,6 +14,7 @@
 #include <codespy/support/StringBuilder.hh>
 
 #include <unordered_map>
+#include <unordered_set>
 
 namespace codespy::ir {
 namespace {
@@ -65,9 +68,6 @@ String Dumper::value_string(Value *value) {
         return codespy::format("{} %a{}", type_string(argument->type()), index);
     }
     if (auto *block = value_cast<BasicBlock>(value)) {
-        if (!m_block_map.contains(block)) {
-            m_block_map.emplace(block, m_block_map.size());
-        }
         return codespy::format("L{}", m_block_map.at(block));
     }
     if (value->kind() == ValueKind::ConstantNull) {
@@ -95,6 +95,15 @@ String Dumper::value_string(Value *value) {
     return codespy::format("{} %v{}", type_string(value->type()), m_value_map.at(value));
 }
 
+void dfs(Vector<BasicBlock *> &post_order, std::unordered_set<BasicBlock *> &visited, BasicBlock *block) {
+    for (auto *succ : ir::succs_of(block)) {
+        if (visited.insert(succ).second) {
+            dfs(post_order, visited, succ);
+        }
+    }
+    post_order.push(block);
+}
+
 void Dumper::run_on(Function *function) {
     m_function = function;
     m_sb.append("{} @{}(", type_string(function->function_type()->return_type()), function->display_name());
@@ -111,19 +120,34 @@ void Dumper::run_on(Function *function) {
         return;
     }
 
+    // Construct reverse post order.
+    Vector<BasicBlock *> block_order;
+    std::unordered_set<BasicBlock *> visited_blocks;
+    dfs(block_order, visited_blocks, function->entry_block());
+    std::reverse(block_order.begin(), block_order.end());
+
+    // Materialise unique value identifiers now.
+    for (auto *block : block_order) {
+        m_block_map.emplace(block, m_block_map.size());
+        for (auto *inst : *block) {
+            if (inst->type() != function->context().void_type()) {
+                m_value_map.emplace(inst, m_value_map.size());
+            }
+        }
+    }
+
     m_sb.append(") {\n");
     for (auto *local : function->locals()) {
         m_sb.append("  %l{}: {}\n", m_local_map.size(), type_string(local->type()));
         m_local_map.emplace(local, m_local_map.size());
     }
-    for (auto *block : function->blocks()) {
+    for (auto *block : block_order) {
         m_sb.append("  {}", value_string(block));
         m_sb.append(" {\n");
-        for (auto *inst : block->insts()) {
+        for (auto *inst : *block) {
             m_sb.append("    ");
             if (inst->type() != function->context().void_type()) {
-                m_sb.append("%v{} = ", m_value_map.size());
-                m_value_map.emplace(inst, m_value_map.size());
+                m_sb.append("%v{} = ", m_value_map.at(inst));
             }
             inst->accept(*this);
             m_sb.append('\n');
