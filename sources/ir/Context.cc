@@ -12,22 +12,11 @@ ArrayType *Context::array_type(Type *element_type) {
 }
 
 FunctionType *Context::function_type(Type *return_type, Vector<Type *> &&parameter_types) {
-    for (const auto &type : m_function_types) {
-        if (type->return_type() != return_type) {
-            continue;
-        }
-        if (type->parameter_types().size() != parameter_types.size()) {
-            continue;
-        }
-        bool match = true;
-        for (std::size_t i = 0; i < parameter_types.size(); i++) {
-            match &= type->parameter_types()[i] == parameter_types[i];
-        }
-        if (match) {
-            return type.ptr();
-        }
+    auto &slot = m_function_types[FunctionTypeKey{return_type, parameter_types.span()}];
+    if (!slot) {
+        slot = codespy::make_unique<FunctionType>(return_type, std::move(parameter_types));
     }
-    return m_function_types.emplace(new FunctionType(return_type, std::move(parameter_types))).ptr();
+    return slot.ptr();
 }
 
 IntType *Context::int_type(std::uint16_t bit_width) {
@@ -45,30 +34,27 @@ ReferenceType *Context::reference_type(String class_name) {
 }
 
 ConstantDouble *Context::constant_double(double value) {
-    for (const auto &constant : m_double_constants) {
-        if (constant->value() == value) {
-            return constant.ptr();
-        }
+    auto &slot = m_double_constants[value];
+    if (!slot) {
+        slot = codespy::make_unique<ConstantDouble>(&m_double_type, value);
     }
-    return m_double_constants.emplace(new ConstantDouble(&m_double_type, value)).ptr();
+    return slot.ptr();
 }
 
 ConstantFloat *Context::constant_float(float value) {
-    for (const auto &constant : m_float_constants) {
-        if (constant->value() == value) {
-            return constant.ptr();
-        }
+    auto &slot = m_float_constants[value];
+    if (!slot) {
+        slot = codespy::make_unique<ConstantFloat>(&m_float_type, value);
     }
-    return m_float_constants.emplace(new ConstantFloat(&m_float_type, value)).ptr();
+    return slot.ptr();
 }
 
 ConstantInt *Context::constant_int(IntType *type, std::int64_t value) {
-    for (const auto &constant : m_int_constants) {
-        if (constant->type() == type && constant->value() == value) {
-            return constant.ptr();
-        }
+    auto &slot = m_int_constants[ConstantIntKey{value, type->bit_width()}];
+    if (!slot) {
+        slot = codespy::make_unique<ConstantInt>(type, value);
     }
-    return m_int_constants.emplace(new ConstantInt(type, value)).ptr();
+    return slot.ptr();
 }
 
 ConstantString *Context::constant_string(String value) {

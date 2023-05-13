@@ -10,6 +10,49 @@
 namespace codespy::ir {
 
 class Context {
+    struct ConstantIntKey {
+        std::int64_t value;
+        std::uint16_t bit_width;
+
+        friend bool operator==(const ConstantIntKey &lhs, const ConstantIntKey &rhs) {
+            return lhs.value == rhs.value && lhs.bit_width == rhs.bit_width;
+        }
+    };
+
+    struct FunctionTypeKey {
+        Type *return_type;
+        Span<Type *> parameter_types;
+
+        friend bool operator==(const FunctionTypeKey &lhs, const FunctionTypeKey &rhs) {
+            if (lhs.return_type != rhs.return_type) {
+                return false;
+            }
+            if (lhs.parameter_types.size() != rhs.parameter_types.size()) {
+                return false;
+            }
+            return std::equal(lhs.parameter_types.begin(), lhs.parameter_types.end(), rhs.parameter_types.begin());
+        }
+    };
+
+    struct ConstantIntKeyHash {
+        std::size_t operator()(const ConstantIntKey &key) const {
+            // TODO: Actual int hash.
+            return codespy::hash_combine(key.value, key.bit_width);
+        }
+    };
+
+    struct FunctionTypeKeyHash {
+        std::size_t operator()(const FunctionTypeKey &key) const {
+            // TODO: Actual pointer hash.
+            auto hash = std::hash<Type *>{}(key.return_type);
+            for (auto *type : key.parameter_types) {
+                hash = codespy::hash_combine(hash, std::hash<Type *>{}(type));
+            }
+            return hash;
+        }
+    };
+
+private:
     Type m_any_type{TypeKind::Any};
     Type m_label_type{TypeKind::Label};
     Type m_float_type{TypeKind::Float};
@@ -18,12 +61,12 @@ class Context {
     std::unordered_map<Type *, UniquePtr<ArrayType>> m_array_types;
     std::unordered_map<std::uint16_t, UniquePtr<IntType>> m_int_types;
     std::unordered_map<String, UniquePtr<ReferenceType>> m_reference_types;
-    Vector<UniquePtr<FunctionType>> m_function_types;
+    std::unordered_map<FunctionTypeKey, UniquePtr<FunctionType>, FunctionTypeKeyHash> m_function_types;
 
     Value m_constant_null;
-    Vector<UniquePtr<ConstantDouble>> m_double_constants;
-    Vector<UniquePtr<ConstantFloat>> m_float_constants;
-    Vector<UniquePtr<ConstantInt>> m_int_constants;
+    std::unordered_map<double, UniquePtr<ConstantDouble>> m_double_constants;
+    std::unordered_map<float, UniquePtr<ConstantFloat>> m_float_constants;
+    std::unordered_map<ConstantIntKey, UniquePtr<ConstantInt>, ConstantIntKeyHash> m_int_constants;
     std::unordered_map<String, UniquePtr<ConstantString>> m_string_constants;
 
 public:
