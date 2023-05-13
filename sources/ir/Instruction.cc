@@ -20,7 +20,7 @@ void Instruction::set_operand(unsigned index, Value *value) {
 
 void Instruction::accept(Visitor &visitor) {
     switch (m_opcode) {
-#define INST(opcode, Class) case opcode: visitor.visit(*as<Class>()); break;
+#define INST(opcode, Class) case opcode: visitor.visit(*static_cast<Class *>(this)); break;
 #include <codespy/ir/Instructions.in>
     }
 }
@@ -31,10 +31,10 @@ void Instruction::remove_from_parent() {
 
 // TODO: This should probably be defined on the relevant subclasses.
 BasicBlock *Instruction::successor(unsigned index) const {
-    if (const auto *branch = as<BranchInst>()) {
+    if (const auto *branch = value_cast<BranchInst>(this)) {
         return index == 0 ? branch->true_target() : branch->false_target();
     }
-    if (const auto *switch_inst = as<SwitchInst>()) {
+    if (const auto *switch_inst = value_cast<SwitchInst>(this)) {
         if (index == 0) {
             return switch_inst->default_target();
         }
@@ -44,10 +44,10 @@ BasicBlock *Instruction::successor(unsigned index) const {
 }
 
 unsigned int Instruction::successor_count() const {
-    if (const auto *branch = as<BranchInst>()) {
+    if (const auto *branch = value_cast<BranchInst>(this)) {
         return branch->is_conditional() ? 2 : 1;
     }
-    if (const auto *switch_inst = as<SwitchInst>()) {
+    if (const auto *switch_inst = value_cast<SwitchInst>(this)) {
         return switch_inst->case_count() + 1;
     }
     return 0;

@@ -67,9 +67,6 @@ enum class ValueKind : std::uint8_t {
     Local,
 };
 
-template <typename T>
-concept HasValueKind = requires(T) { static_cast<ValueKind>(T::k_kind); };
-
 class Value {
     friend class Context;
 
@@ -93,34 +90,38 @@ public:
     void destroy();
     void replace_all_uses_with(Value *value);
 
-    template <HasValueKind T>
-    T *as();
-    template <HasValueKind T>
-    const T *as() const;
-    template <HasValueKind T>
-    bool is() const;
-
     auto user_begin() const { return UserIterator(m_use_list); }
     auto user_end() const { return UserIterator(nullptr); } // NOLINT
     auto users() const { return codespy::make_range(user_begin(), user_end()); }
+    bool has_uses() const { return user_begin() != user_end(); }
 
     Type *type() const { return m_type; }
     ValueKind kind() const { return m_kind; }
 };
 
+template <typename T>
+concept HasValueKind = requires(T) { static_cast<ValueKind>(T::k_kind); };
+
 template <HasValueKind T>
-T *Value::as() {
-    return is<T>() ? static_cast<T *>(this) : nullptr;
+struct ValueIsImpl {
+    bool operator()(const Value *value) const {
+        return value->kind() == T::k_kind;
+    }
+};
+
+template <HasValueKind T>
+bool value_is(const Value *value) {
+    return ValueIsImpl<T>{}(value);
 }
 
 template <HasValueKind T>
-const T *Value::as() const {
-    return is<T>() ? static_cast<const T *>(this) : nullptr;
+T *value_cast(Value *value) {
+    return value_is<T>(value) ? static_cast<T *>(value) : nullptr;
 }
 
 template <HasValueKind T>
-bool Value::is() const {
-    return m_kind == T::k_kind;
+const T *value_cast(const Value *value) {
+    return value_is<T>(value) ? static_cast<const T *>(value) : nullptr;
 }
 
 } // namespace codespy::ir

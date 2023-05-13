@@ -56,7 +56,7 @@ String type_string(Type *type) {
 }
 
 String Dumper::value_string(Value *value) {
-    if (auto *argument = value->as<Argument>()) {
+    if (auto *argument = value_cast<Argument>(value)) {
         auto it = std::find_if(m_function->arguments().begin(), m_function->arguments().end(),
                                [argument](const Argument *arg) {
                                    return arg == argument;
@@ -64,7 +64,7 @@ String Dumper::value_string(Value *value) {
         auto index = std::distance(m_function->arguments().begin(), it);
         return codespy::format("{} %a{}", type_string(argument->type()), index);
     }
-    if (auto *block = value->as<BasicBlock>()) {
+    if (auto *block = value_cast<BasicBlock>(value)) {
         if (!m_block_map.contains(block)) {
             m_block_map.emplace(block, m_block_map.size());
         }
@@ -73,23 +73,23 @@ String Dumper::value_string(Value *value) {
     if (value->kind() == ValueKind::ConstantNull) {
         return codespy::format("{} null", type_string(value->type()));
     }
-    if (auto *constant = value->as<ConstantDouble>()) {
+    if (auto *constant = value_cast<ConstantDouble>(value)) {
         return codespy::format("{} ${}", type_string(constant->type()), constant->value());
     }
-    if (auto *constant = value->as<ConstantFloat>()) {
+    if (auto *constant = value_cast<ConstantFloat>(value)) {
         return codespy::format("{} ${}", type_string(constant->type()), constant->value());
     }
-    if (auto *constant = value->as<ConstantInt>()) {
+    if (auto *constant = value_cast<ConstantInt>(value)) {
         return codespy::format("{} ${}", type_string(constant->type()), constant->value());
     }
-    if (auto *constant = value->as<ConstantString>()) {
+    if (auto *constant = value_cast<ConstantString>(value)) {
         return codespy::format("{} \"{}\"", type_string(constant->type()), constant->value());
     }
-    if (auto *function = value->as<Function>()) {
+    if (auto *function = value_cast<Function>(value)) {
         return codespy::format("{} @{}", type_string(function->function_type()->return_type()),
                                function->display_name());
     }
-    if (auto *local = value->as<Local>()) {
+    if (auto *local = value_cast<Local>(value)) {
         return codespy::format("{} %l{}", type_string(local->type()), m_local_map.at(local));
     }
     return codespy::format("{} %v{}", type_string(value->type()), m_value_map.at(value));

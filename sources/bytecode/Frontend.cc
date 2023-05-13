@@ -254,7 +254,7 @@ void Frontend::visit_code(CodeAttribute &code) {
         }
 
         // Materialise false target if needed.
-        if (auto *branch = m_block->terminator()->as<ir::BranchInst>()) {
+        if (auto *branch = ir::value_cast<ir::BranchInst>(m_block->terminator())) {
             if (!branch->is_conditional()) {
                 continue;
             }

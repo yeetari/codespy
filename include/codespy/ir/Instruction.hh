@@ -38,9 +38,6 @@ enum class Opcode : std::uint8_t {
     Throw,
 };
 
-template <typename T>
-concept HasOpcode = requires(T) { static_cast<Opcode>(T::k_opcode); };
-
 class Instruction : public Value, public ListNode {
     const Opcode m_opcode;
     BasicBlock *const m_parent;
@@ -73,32 +70,21 @@ public:
     BasicBlock *successor(unsigned index) const;
     unsigned successor_count() const;
 
-    template <HasOpcode T>
-    T *as();
-    template <HasOpcode T>
-    const T *as() const;
-    template <HasOpcode T>
-    bool is() const;
-
     bool is_terminator() const;
     Opcode opcode() const { return m_opcode; }
     BasicBlock *parent() const { return m_parent; }
     bool has_operands() const { return m_operands != nullptr; }
 };
 
-template <HasOpcode T>
-T *Instruction::as() {
-    return is<T>() ? static_cast<T *>(this) : nullptr;
-}
+template <typename T>
+concept HasOpcode = requires(T) { static_cast<Opcode>(T::k_opcode); };
 
-template <HasOpcode T>
-const T *Instruction::as() const {
-    return is<T>() ? static_cast<const T *>(this) : nullptr;
-}
-
-template <HasOpcode T>
-bool Instruction::is() const {
-    return m_opcode == T::k_opcode;
-}
+template <HasOpcode T> requires HasValueKind<T>
+struct ValueIsImpl<T> {
+    bool operator()(const Value *value) const {
+        const auto *inst = value_cast<Instruction>(value);
+        return inst != nullptr && inst->opcode() == T::k_opcode;
+    }
+};
 
 } // namespace codespy::ir

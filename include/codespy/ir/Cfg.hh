@@ -13,7 +13,7 @@ class PredecessorIterator {
 
 public:
     explicit PredecessorIterator(UserIterator it) : m_it(it) {
-        if (!it.at_end() && !it->is<Instruction>()) {
+        if (!it.at_end() && !value_is<Instruction>(*it)) {
             ++*this;
         }
     }
@@ -21,7 +21,7 @@ public:
     PredecessorIterator &operator++() {
         do {
             ++m_it;
-        } while (!m_it.at_end() && !m_it->is<Instruction>());
+        } while (!m_it.at_end() && !value_is<Instruction>(*m_it));
         return *this;
     }
     PredecessorIterator operator++(int) {
@@ -32,7 +32,7 @@ public:
 
     bool operator==(const PredecessorIterator &other) const { return m_it == other.m_it; }
 
-    BasicBlock *operator*() const { return m_it->as<Instruction>()->parent(); }
+    BasicBlock *operator*() const { return value_cast<Instruction>(*m_it)->parent(); }
     BasicBlock *operator->() const { return operator*(); }
 };
 

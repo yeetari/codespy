@@ -43,41 +43,43 @@ void Value::add_use(Use &use) {
 void Value::destroy() {
     switch (m_kind) {
     case ValueKind::Argument:
-        delete as<Argument>();
+        delete static_cast<Argument *>(this);
         break;
     case ValueKind::BasicBlock:
-        delete as<BasicBlock>();
+        delete static_cast<BasicBlock *>(this);
         break;
     case ValueKind::ConstantDouble:
-        delete as<ConstantDouble>();
+        delete static_cast<ConstantDouble *>(this);
         break;
     case ValueKind::ConstantFloat:
-        delete as<ConstantFloat>();
+        delete static_cast<ConstantFloat *>(this);
         break;
     case ValueKind::ConstantInt:
-        delete as<ConstantInt>();
+        delete static_cast<ConstantInt *>(this);
         break;
     case ValueKind::ConstantNull:
         break;
     case ValueKind::ConstantString:
-        delete as<ConstantString>();
+        delete static_cast<ConstantString *>(this);
         break;
     case ValueKind::Function:
-        delete as<Function>();
+        delete static_cast<Function *>(this);
         break;
     case ValueKind::Instruction: {
-        const auto *inst = as<Instruction>();
-        switch (inst->opcode()) {
-#define INST(opcode, Class) case opcode: delete inst->as<Class>(); break;
+        switch (static_cast<Instruction *>(this)->opcode()) {
+#define INST(opcode, Class)                                                                                            \
+    case opcode:                                                                                                       \
+        delete static_cast<Class *>(this);                                                                             \
+        break;
 #include <codespy/ir/Instructions.in>
         }
         break;
     }
     case ValueKind::JavaField:
-        delete as<JavaField>();
+        delete static_cast<JavaField *>(this);
         break;
     case ValueKind::Local:
-        delete as<Local>();
+        delete static_cast<Local *>(this);
         break;
     }
 }
