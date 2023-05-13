@@ -4,6 +4,8 @@
 #include <codespy/ir/Instruction.hh>
 #include <codespy/support/IteratorRange.hh>
 
+#include <iterator>
+
 namespace codespy::ir {
 
 class PredecessorIterator {
@@ -88,3 +90,25 @@ inline auto succs_of(BasicBlock *block) {
 }
 
 } // namespace codespy::ir
+
+namespace std {
+
+template <>
+struct iterator_traits<codespy::ir::PredecessorIterator> {
+    using difference_type = std::ptrdiff_t;
+    using value_type = codespy::ir::BasicBlock *;
+    using pointer = value_type *;
+    using reference = value_type &;
+    using iterator_category = std::forward_iterator_tag;
+};
+
+template <>
+struct iterator_traits<codespy::ir::SuccessorIterator> {
+    using difference_type = std::ptrdiff_t;
+    using value_type = codespy::ir::BasicBlock *;
+    using pointer = value_type *;
+    using reference = value_type &;
+    using iterator_category = std::forward_iterator_tag;
+};
+
+} // namespace std
