@@ -17,7 +17,6 @@ Checks: >
   bugprone-infinite-loop,
   bugprone-integer-division,
   bugprone-lambda-function-name,
-  bugprone-macro-parentheses,
   bugprone-macro-repeated-side-effects,
   bugprone-misplaced-operator-in-strlen-in-alloc,
   bugprone-misplaced-pointer-arithmetic-in-alloc,
