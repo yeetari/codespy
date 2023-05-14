@@ -575,6 +575,13 @@ void Frontend::visit_stack_op(StackOp stack_op) {
         m_stack.push(value1);
         break;
     }
+    case StackOp::Swap: {
+        ir::Value *value1 = m_stack.take_last();
+        ir::Value *value2 = m_stack.take_last();
+        m_stack.push(value1);
+        m_stack.push(value2);
+        break;
+    }
     default:
         assert(false);
     }
