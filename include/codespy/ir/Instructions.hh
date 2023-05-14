@@ -88,6 +88,13 @@ public:
     Value *value() const { return operand(0); }
 };
 
+class CatchInst : public Instruction {
+public:
+    static constexpr auto k_opcode = Opcode::Catch;
+
+    CatchInst(BasicBlock *parent, Type *type) : Instruction(k_opcode, parent, type, 0) {}
+};
+
 enum class CompareOp {
     Equal,
     NotEqual,

@@ -172,6 +172,7 @@ void Frontend::visit_method(AccessFlags access_flags, StringView name, StringVie
     assert(m_queue.empty());
     m_block_map.clear();
     m_local_map.clear();
+    m_exception_ranges.clear();
     m_stack.clear();
 
     ir::Type *this_type = nullptr;
@@ -227,7 +228,7 @@ void Frontend::visit_code(CodeAttribute &code) {
         m_stack.clear();
 
         if (block_info.handler) {
-            m_stack.push(m_block->append<ir::NewInst>(m_context.reference_type(block_info.handler_type)));
+            m_stack.push(m_block->append<ir::CatchInst>(m_context.reference_type(block_info.handler_type)));
         }
 
         // Load entry stack.
@@ -295,14 +296,27 @@ void Frontend::visit_code(CodeAttribute &code) {
             }
         }
     }
+
+    for (const auto &[pc, block_info] : m_block_map) {
+        for (const auto &range : m_exception_ranges) {
+            const auto &handler_info = m_block_map.at(range.handler_pc);
+            auto *exception_type = m_context.reference_type(handler_info.handler_type);
+            if (pc >= range.start_pc && pc < range.end_pc) {
+                block_info.block->add_handler(exception_type, handler_info.block);
+            }
+        }
+    }
 }
 
-void Frontend::visit_exception_range(std::int32_t, std::int32_t, std::int32_t handler_pc, StringView type_name) {
-    // TODO: catch instruction, not right at all.
+void Frontend::visit_exception_range(std::int32_t start_pc, std::int32_t end_pc, std::int32_t handler_pc,
+                                     StringView type_name) {
     auto &handler_info = m_block_map[handler_pc];
     handler_info.handler = true;
     handler_info.handler_type = type_name;
     m_queue.push_back(handler_pc);
+    m_exception_ranges.push({start_pc, end_pc, handler_pc});
+    m_block_map[start_pc];
+    m_block_map[handler_pc];
 }
 
 void Frontend::visit_constant(Constant constant) {

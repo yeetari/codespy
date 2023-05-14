@@ -140,6 +140,9 @@ void Dumper::run_on(Function *function) {
     for (auto *block : block_order) {
         m_sb.append("  {}", value_string(block));
         m_sb.append(" {\n");
+        for (auto *handler : block->handlers()) {
+            m_sb.append("    @handler {} -> L{}\n", type_string(handler->type()), m_block_map.at(handler->target()));
+        }
         for (auto *inst : *block) {
             m_sb.append("    ");
             if (inst->type() != function->context().void_type()) {
@@ -225,6 +228,10 @@ void Dumper::visit(CastInst &cast) {
     m_sb.append("cast {} to {}", value_string(cast.value()), type_string(cast.type()));
 }
 
+void Dumper::visit(CatchInst &catch_inst) {
+    m_sb.append("catch {}", type_string(catch_inst.type()));
+}
+
 void Dumper::visit(CompareInst &compare) {
     switch (compare.op()) {
     case CompareOp::Equal:
@@ -247,6 +254,10 @@ void Dumper::visit(CompareInst &compare) {
         break;
     }
     m_sb.append("{}, {}", value_string(compare.lhs()), value_string(compare.rhs()));
+}
+
+void Dumper::visit(ExceptionHandler &) {
+    assert(false);
 }
 
 void Dumper::visit(InstanceOfInst &instance_of) {

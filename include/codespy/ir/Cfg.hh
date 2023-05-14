@@ -49,11 +49,11 @@ inline auto preds_of(BasicBlock *block) {
 }
 
 class SuccessorIterator {
-    Instruction *const m_terminator;
+    BasicBlock *const m_block;
     unsigned m_index;
 
 public:
-    SuccessorIterator(Instruction *terminator, unsigned index) : m_terminator(terminator), m_index(index) {}
+    SuccessorIterator(BasicBlock *block, unsigned index) : m_block(block), m_index(index) {}
 
     SuccessorIterator &operator++() {
         m_index++;
@@ -67,22 +67,16 @@ public:
 
     bool operator==(const SuccessorIterator &other) const { return m_index == other.m_index; }
 
-    BasicBlock *operator*() const { return m_terminator->successor(m_index); }
+    BasicBlock *operator*() const { return m_block->successor(m_index); }
     BasicBlock *operator->() const { return operator*(); }
 };
 
-inline auto succ_begin(Instruction *terminator) {
-    return SuccessorIterator(terminator, 0);
-}
 inline auto succ_begin(BasicBlock *block) {
-    return succ_begin(block->terminator());
+    return SuccessorIterator(block, 0);
 }
 
-inline auto succ_end(Instruction *terminator) {
-    return SuccessorIterator(terminator, terminator->successor_count());
-}
 inline auto succ_end(BasicBlock *block) {
-    return succ_end(block->terminator());
+    return SuccessorIterator(block, block->successor_count());
 }
 
 inline auto succs_of(BasicBlock *block) {

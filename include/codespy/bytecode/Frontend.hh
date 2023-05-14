@@ -33,6 +33,12 @@ class Frontend : public ClassVisitor, public CodeVisitor {
         bool visited{false};
     };
 
+    struct ExceptionRange {
+        std::int32_t start_pc;
+        std::int32_t end_pc;
+        std::int32_t handler_pc;
+    };
+
 private:
     ir::Context &m_context;
     // TODO: Make key StringView to avoid copies.
@@ -45,6 +51,7 @@ private:
     std::unordered_map<std::int32_t, BlockInfo> m_block_map;
     // TODO: Can probably be a vector.
     std::unordered_map<std::uint16_t, ir::Value *> m_local_map;
+    Vector<ExceptionRange> m_exception_ranges;
     std::deque<std::int32_t> m_queue;
     Stack m_stack;
 

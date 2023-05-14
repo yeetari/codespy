@@ -8,13 +8,28 @@ namespace codespy::ir {
 BasicBlock::BasicBlock(Context &context, Function *parent)
     : Value(k_kind, context.label_type()), m_context(context), m_parent(parent) {}
 
+void BasicBlock::add_handler(Type *exception_type, BasicBlock *target) {
+    m_handlers.emplace<ExceptionHandler>(m_handlers.end(), this, exception_type, target);
+}
+
 BasicBlock::iterator BasicBlock::remove(Instruction *inst) {
     return m_insts.erase(iterator(inst));
 }
 
 List<BasicBlock>::iterator BasicBlock::remove_from_parent() {
-    assert(user_begin() == user_end());
     return m_parent->remove_block(this);
+}
+
+BasicBlock *BasicBlock::successor(unsigned index) const {
+    const auto successor_count = terminator()->successor_count();
+    if (index < successor_count) {
+        return terminator()->successor(index);
+    }
+    return std::next(m_handlers.begin(), index - successor_count)->target();
+}
+
+unsigned BasicBlock::successor_count() const {
+    return terminator()->successor_count() + m_handlers.size_slow();
 }
 
 bool BasicBlock::has_terminator() const {
