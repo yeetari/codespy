@@ -5,6 +5,7 @@
 #include <codespy/ir/Function.hh>
 
 #include <unordered_map>
+#include <unordered_set>
 
 // A node D dominates a node N if every path from the entry to N must go from D (considered strict if N != D)
 // The set of all dominators D1, D2, Dn that dominate N is denoted Dom(N)
@@ -16,9 +17,57 @@
 // Implementation of https://www.cs.rice.edu/~keith/Embed/dom.pdf
 
 namespace codespy::ir {
-namespace {
 
-void dfs(std::unordered_map<BasicBlock *, unsigned> &index_map, Vector<BasicBlock *> &post_order, BasicBlock *block) {
+bool DominanceInfo::dominates(BasicBlock *dominator, BasicBlock *block) const {
+    for (auto *idom = block; idom != nullptr; idom = m_idoms.at(idom)) {
+        if (idom == dominator) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool DominanceInfo::dominates(Instruction *def, Instruction *use) const {
+    if (def == use) {
+        return true;
+    }
+
+    auto *def_block = def->parent();
+    auto *use_block = use->parent();
+    if (def_block != use_block) {
+        return dominates(def_block, use_block);
+    }
+
+    // Instructions within the same block, compare order in the instruction list.
+    for (auto *inst : *def_block) {
+        if (inst == def) {
+            return true;
+        }
+        if (inst == use) {
+            return false;
+        }
+    }
+    codespy::unreachable();
+}
+
+bool DominanceInfo::strictly_dominates(BasicBlock *dominator, BasicBlock *block) const {
+    return dominator != block && dominates(dominator, block);
+}
+
+bool DominanceInfo::strictly_dominates(Instruction *def, Instruction *use) const {
+    return def != use && dominates(def, use);
+}
+
+IteratorRange<std::unordered_set<BasicBlock *>::const_iterator> DominanceInfo::frontiers(BasicBlock *block) const {
+    if (!m_frontiers.contains(block)) {
+        return {{}, {}};
+    }
+    const auto &set = m_frontiers.at(block);
+    return codespy::make_range(set.begin(), set.end());
+}
+
+static void dfs(std::unordered_map<BasicBlock *, unsigned> &index_map, Vector<BasicBlock *> &post_order,
+                BasicBlock *block) {
     index_map[block];
     for (auto *succ : ir::succs_of(block)) {
         if (!index_map.contains(succ)) {
@@ -29,11 +78,9 @@ void dfs(std::unordered_map<BasicBlock *, unsigned> &index_map, Vector<BasicBloc
     post_order.push(block);
 }
 
-} // namespace
-
-void compute_dominance(Function *function) {
+DominanceInfo compute_dominance(Function *function) {
     if (function->blocks().empty()) {
-        return;
+        return {{}, {}};
     }
 
     std::unordered_map<BasicBlock *, unsigned> index_map;
@@ -41,6 +88,7 @@ void compute_dominance(Function *function) {
     dfs(index_map, order, function->entry_block());
 
     std::unordered_map<BasicBlock *, BasicBlock *> idoms;
+    idoms.emplace(function->entry_block(), function->entry_block());
 
     auto intersect = [&](BasicBlock *finger1, BasicBlock *finger2) {
         while (finger1 != finger2) {
@@ -60,11 +108,16 @@ void compute_dominance(Function *function) {
         // For all nodes in reverse postorder (excl. entry)
         for (unsigned i = order.size() - 1; i > 0; i--) {
             auto *block = order[i - 1];
-            auto *new_idom = *ir::pred_begin(block);
 
             // For all other predecessors of block
+            ir::BasicBlock *new_idom = nullptr;
             for (auto *pred : ir::preds_of(block)) {
-                if (pred != new_idom && idoms.contains(pred)) {
+                if (!idoms.contains(pred)) {
+                    continue;
+                }
+                if (new_idom == nullptr) {
+                    new_idom = pred;
+                } else {
                     new_idom = intersect(pred, new_idom);
                 }
             }
@@ -72,6 +125,21 @@ void compute_dominance(Function *function) {
             changed |= std::exchange(idoms[block], new_idom) != new_idom;
         }
     } while (std::exchange(changed, false));
+
+    std::unordered_map<BasicBlock *, std::unordered_set<BasicBlock *>> frontiers;
+    for (auto *block : function->blocks()) {
+        if (std::distance(ir::pred_begin(block), ir::pred_end(block)) < 2) {
+            // Not a join point.
+            continue;
+        }
+        for (auto *runner : ir::preds_of(block)) {
+            while (runner != idoms.at(block)) {
+                frontiers[runner].insert(block);
+                runner = idoms.at(runner);
+            }
+        }
+    }
+    return {std::move(idoms), std::move(frontiers)};
 }
 
 } // namespace codespy::ir
