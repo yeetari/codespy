@@ -10,6 +10,7 @@
 namespace codespy::ir {
 
 class Function;
+class JavaField;
 
 class ArrayLengthInst : public Instruction {
 public:
@@ -156,18 +157,13 @@ public:
 };
 
 class LoadFieldInst : public Instruction {
-    String m_owner;
-    String m_name;
-
 public:
     static constexpr auto k_opcode = Opcode::LoadField;
 
-    LoadFieldInst(BasicBlock *parent, Type *type, String owner, String name, Value *object_ref);
+    LoadFieldInst(BasicBlock *parent, Type *type, JavaField *field, Value *object_ref);
 
-    const String &owner() const { return m_owner; }
-    const String &name() const { return m_name; }
-    bool has_object_ref() const { return has_operands(); }
-    Value *object_ref() const { return operand(0); }
+    JavaField *field() const;
+    Value *object_ref() const { return operand(1); }
 };
 
 enum class MonitorOp {
@@ -254,20 +250,14 @@ public:
 };
 
 class StoreFieldInst : public Instruction {
-    String m_owner;
-    String m_name;
-    bool m_has_object_ref;
-
 public:
     static constexpr auto k_opcode = Opcode::StoreField;
 
-    StoreFieldInst(BasicBlock *parent, String owner, String name, Value *value, Value *object_ref);
+    StoreFieldInst(BasicBlock *parent, JavaField *field, Value *value, Value *object_ref);
 
-    const String &owner() const { return m_owner; }
-    const String &name() const { return m_name; }
-    bool has_object_ref() const { return m_has_object_ref; }
-    Value *value() const { return operand(0); }
-    Value *object_ref() const { return operand(1); }
+    JavaField *field() const;
+    Value *value() const { return operand(1); }
+    Value *object_ref() const { return operand(2); }
 };
 
 class SwitchInst : public Instruction {

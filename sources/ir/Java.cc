@@ -2,8 +2,8 @@
 
 namespace codespy::ir {
 
-JavaField::JavaField(String name, Type *type, bool is_instance)
-    : Value(k_kind, type), m_name(std::move(name)), m_is_instance(is_instance) {}
+JavaField::JavaField(JavaClass *parent, String name, Type *type, bool is_instance)
+    : Value(k_kind, type), m_parent(parent), m_name(std::move(name)), m_is_instance(is_instance) {}
 
 JavaClass::JavaClass(Context &context, String name) : m_context(context), m_name(std::move(name)) {}
 
@@ -13,7 +13,7 @@ JavaField *JavaClass::ensure_field(StringView name, Type *type, bool is_instance
             return field;
         }
     }
-    return m_fields.emplace<JavaField>(m_fields.end(), name, type, is_instance);
+    return m_fields.emplace<JavaField>(m_fields.end(), this, name, type, is_instance);
 }
 
 Function *JavaClass::ensure_method(StringView name, FunctionType *type) {

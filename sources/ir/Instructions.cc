@@ -3,6 +3,7 @@
 #include <codespy/ir/BasicBlock.hh>
 #include <codespy/ir/Context.hh>
 #include <codespy/ir/Function.hh>
+#include <codespy/ir/Java.hh>
 
 namespace codespy::ir {
 
@@ -95,12 +96,14 @@ LoadArrayInst::LoadArrayInst(BasicBlock *parent, Type *type, Value *array_ref, V
     set_operand(1, index);
 }
 
-LoadFieldInst::LoadFieldInst(BasicBlock *parent, Type *type, String owner, String name, Value *object_ref)
-    : Instruction(k_opcode, parent, type, object_ref != nullptr ? 1 : 0), m_owner(std::move(owner)),
-      m_name(std::move(name)) {
-    if (object_ref != nullptr) {
-        set_operand(0, object_ref);
-    }
+LoadFieldInst::LoadFieldInst(BasicBlock *parent, Type *type, JavaField *field, Value *object_ref)
+    : Instruction(k_opcode, parent, type, 2) {
+    set_operand(0, field);
+    set_operand(1, object_ref);
+}
+
+JavaField *LoadFieldInst::field() const {
+    return static_cast<JavaField *>(operand(0));
 }
 
 MonitorInst::MonitorInst(BasicBlock *parent, MonitorOp op, Value *object_ref)
@@ -148,13 +151,15 @@ StoreArrayInst::StoreArrayInst(BasicBlock *parent, Value *array_ref, Value *inde
     set_operand(2, value);
 }
 
-StoreFieldInst::StoreFieldInst(BasicBlock *parent, String owner, String name, Value *value, Value *object_ref)
-    : Instruction(k_opcode, parent, parent->context().void_type(), object_ref != nullptr ? 2 : 1),
-      m_owner(std::move(owner)), m_name(std::move(name)), m_has_object_ref(object_ref != nullptr) {
-    set_operand(0, value);
-    if (object_ref != nullptr) {
-        set_operand(1, object_ref);
-    }
+StoreFieldInst::StoreFieldInst(BasicBlock *parent, JavaField *field, Value *value, Value *object_ref)
+    : Instruction(k_opcode, parent, parent->context().void_type(), 3) {
+    set_operand(0, field);
+    set_operand(1, value);
+    set_operand(2, object_ref);
+}
+
+JavaField *StoreFieldInst::field() const {
+    return static_cast<JavaField *>(operand(0));
 }
 
 SwitchInst::SwitchInst(BasicBlock *parent, Value *value, BasicBlock *default_target,

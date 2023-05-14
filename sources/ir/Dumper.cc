@@ -7,6 +7,7 @@
 #include <codespy/ir/Context.hh>
 #include <codespy/ir/Function.hh>
 #include <codespy/ir/Instructions.hh>
+#include <codespy/ir/Java.hh>
 #include <codespy/ir/Type.hh>
 #include <codespy/ir/Visitor.hh>
 #include <codespy/support/Format.hh>
@@ -82,6 +83,9 @@ String Dumper::value_string(Value *value) {
     if (auto *function = value_cast<Function>(value)) {
         return codespy::format("{} @{}", type_string(function->function_type()->return_type()),
                                function->display_name());
+    }
+    if (auto *field = value_cast<JavaField>(value)) {
+        return codespy::format("{} {}.{}", type_string(field->type()), field->parent()->name(), field->name());
     }
     if (auto *local = value_cast<Local>(value)) {
         return codespy::format("{} %l{}", type_string(local->type()), local->index());
@@ -286,10 +290,7 @@ void Dumper::visit(LoadArrayInst &load_array) {
 }
 
 void Dumper::visit(LoadFieldInst &load_field) {
-    m_sb.append("load_field {} {}.{}", type_string(load_field.type()), load_field.owner(), load_field.name());
-    if (load_field.has_object_ref()) {
-        m_sb.append(", on {}", value_string(load_field.object_ref()));
-    }
+    m_sb.append("load_field {}, {}", value_string(load_field.object_ref()), value_string(load_field.field()));
 }
 
 void Dumper::visit(MonitorInst &monitor) {
@@ -341,10 +342,8 @@ void Dumper::visit(StoreArrayInst &store_array) {
 }
 
 void Dumper::visit(StoreFieldInst &store_field) {
-    m_sb.append("store_field {}.{}, {}", store_field.owner(), store_field.name(), value_string(store_field.value()));
-    if (store_field.has_object_ref()) {
-        m_sb.append(", on {}", value_string(store_field.object_ref()));
-    }
+    m_sb.append("store_field {}, {}, {}", value_string(store_field.object_ref()), value_string(store_field.field()),
+                value_string(store_field.value()));
 }
 
 void Dumper::visit(SwitchInst &switch_inst) {

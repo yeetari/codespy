@@ -391,20 +391,26 @@ void Frontend::visit_new(StringView descriptor, std::uint8_t dimensions) {
 }
 
 void Frontend::visit_get_field(StringView owner, StringView name, StringView descriptor, bool instance) {
-    ir::Value *object_ref = nullptr;
+    auto *type = parse_type(descriptor);
+    auto *field = ensure_class(owner)->ensure_field(name, type, instance);
     if (instance) {
-        object_ref = m_stack.take_last();
+        ir::Value *object_ref = m_stack.take_last();
+        m_stack.push(m_block->append<ir::LoadFieldInst>(type, field, object_ref));
+    } else {
+        m_stack.push(m_block->append<ir::LoadInst>(type, field));
     }
-    m_stack.push(m_block->append<ir::LoadFieldInst>(parse_type(descriptor), owner, name, object_ref));
 }
 
-void Frontend::visit_put_field(StringView owner, StringView name, StringView, bool instance) {
+void Frontend::visit_put_field(StringView owner, StringView name, StringView descriptor, bool instance) {
+    auto *type = parse_type(descriptor);
+    auto *field = ensure_class(owner)->ensure_field(name, type, instance);
     ir::Value *value = m_stack.take_last();
-    ir::Value *object_ref = nullptr;
     if (instance) {
-        object_ref = m_stack.take_last();
+        ir::Value *object_ref = m_stack.take_last();
+        m_block->append<ir::StoreFieldInst>(field, value, object_ref);
+    } else {
+        m_block->append<ir::StoreInst>(field, value);
     }
-    m_block->append<ir::StoreFieldInst>(owner, name, value, object_ref);
 }
 
 void Frontend::visit_invoke(InvokeKind kind, StringView owner, StringView name, StringView descriptor) {

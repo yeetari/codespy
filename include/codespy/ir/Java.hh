@@ -7,17 +7,20 @@
 namespace codespy::ir {
 
 class Context;
+class JavaClass;
 
 class JavaField : public Value, public ListNode {
+    JavaClass *m_parent;
     String m_name;
     bool m_is_instance;
 
 public:
     static constexpr auto k_kind = ValueKind::JavaField;
 
-    JavaField(String name, Type *type, bool is_instance);
+    JavaField(JavaClass *parent, String name, Type *type, bool is_instance);
 
     bool is_instance() const { return m_is_instance; }
+    JavaClass *parent() const { return m_parent; }
     const String &name() const { return m_name; }
 };
 
