@@ -45,8 +45,8 @@ public:
     Inst *prepend(Args &&...args);
     template <HasOpcode Inst, typename... Args>
     Inst *append(Args &&...args);
-    iterator remove(Instruction *inst);
-    List<BasicBlock>::iterator remove_from_parent();
+    void remove(Instruction *inst);
+    void remove_from_parent();
 
     BasicBlock *successor(unsigned index) const;
     unsigned successor_count() const;

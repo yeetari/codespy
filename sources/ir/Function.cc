@@ -26,13 +26,17 @@ Local *Function::append_local(Type *type) {
 }
 
 Argument *Function::argument(std::size_t index) {
-    auto it = m_arguments.begin();
-    std::advance(it, index);
-    return *it;
+    return *std::next(m_arguments.begin(), index);
 }
 
-List<BasicBlock>::iterator Function::remove_block(BasicBlock *block) {
-    return m_blocks.erase(List<BasicBlock>::iterator(block));
+void Function::remove_block(BasicBlock *block) {
+    assert(!block->has_uses());
+    m_blocks.erase(List<BasicBlock>::iterator(block));
+}
+
+void Function::remove_local(Local *local) {
+    assert(!local->has_uses());
+    m_locals.erase(List<Local>::iterator(local));
 }
 
 void Function::set_name_prefix(String name_prefix) {

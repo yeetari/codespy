@@ -47,7 +47,8 @@ public:
     BasicBlock *append_block();
     Local *append_local(Type *type);
     Argument *argument(std::size_t index);
-    List<BasicBlock>::iterator remove_block(BasicBlock *block);
+    void remove_block(BasicBlock *block);
+    void remove_local(Local *local);
     void set_name_prefix(String name_prefix);
 
     BasicBlock *entry_block() const;

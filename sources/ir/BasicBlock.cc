@@ -12,12 +12,12 @@ void BasicBlock::add_handler(Type *exception_type, BasicBlock *target) {
     m_handlers.emplace<ExceptionHandler>(m_handlers.end(), this, exception_type, target);
 }
 
-BasicBlock::iterator BasicBlock::remove(Instruction *inst) {
-    return m_insts.erase(iterator(inst));
+void BasicBlock::remove(Instruction *inst) {
+    m_insts.erase(iterator(inst));
 }
 
-List<BasicBlock>::iterator BasicBlock::remove_from_parent() {
-    return m_parent->remove_block(this);
+void BasicBlock::remove_from_parent() {
+    m_parent->remove_block(this);
 }
 
 BasicBlock *BasicBlock::successor(unsigned index) const {

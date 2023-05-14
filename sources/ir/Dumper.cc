@@ -331,8 +331,15 @@ void Dumper::visit(NewArrayInst &new_array) {
     m_sb.append(']');
 }
 
-void Dumper::visit(PhiInst &) {
-    assert(false);
+void Dumper::visit(PhiInst &phi) {
+    m_sb.append("phi (");
+    for (unsigned i = 0; i < phi.incoming_count(); i++) {
+        if (i != 0) {
+            m_sb.append(", ");
+        }
+        m_sb.append("{}: {}", value_string(phi.incoming_block(i)), value_string(phi.incoming_value(i)));
+    }
+    m_sb.append(')');
 }
 
 void Dumper::visit(ReturnInst &return_inst) {

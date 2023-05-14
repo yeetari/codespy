@@ -219,10 +219,18 @@ public:
 };
 
 class PhiInst : public Instruction {
+    const unsigned m_incoming_count;
+
 public:
     static constexpr auto k_opcode = Opcode::Phi;
 
-    PhiInst(BasicBlock *parent, Span<std::pair<BasicBlock *, Value *>> incoming);
+    PhiInst(BasicBlock *parent, unsigned incoming_count);
+
+    void set_incoming(unsigned index, BasicBlock *block, Value *value);
+
+    unsigned incoming_count() const { return m_incoming_count; }
+    BasicBlock *incoming_block(unsigned index) const;
+    Value *incoming_value(unsigned index) const;
 };
 
 class ReturnInst : public Instruction {

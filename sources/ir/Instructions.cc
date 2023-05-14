@@ -122,13 +122,23 @@ NewArrayInst::NewArrayInst(BasicBlock *parent, Type *type, Span<Value *> counts)
     }
 }
 
-// TODO: type
-PhiInst::PhiInst(BasicBlock *parent, Span<std::pair<BasicBlock *, Value *>> incoming)
-    : Instruction(k_opcode, parent, nullptr, incoming.size() * 2) {
-    for (unsigned i = 0; const auto &[block, value] : incoming) {
-        set_operand(i++, block);
-        set_operand(i++, value);
-    }
+PhiInst::PhiInst(BasicBlock *parent, unsigned incoming_count)
+    : Instruction(k_opcode, parent, parent->context().any_type(), incoming_count * 2),
+      m_incoming_count(incoming_count) {}
+
+void PhiInst::set_incoming(unsigned index, BasicBlock *block, Value *value) {
+    assert(index < m_incoming_count);
+    set_operand(index * 2, block);
+    set_operand(index * 2 + 1, value);
+    set_type(value->type());
+}
+
+BasicBlock *PhiInst::incoming_block(unsigned index) const {
+    return static_cast<BasicBlock *>(operand(index * 2));
+}
+
+Value *PhiInst::incoming_value(unsigned index) const {
+    return operand(index * 2 + 1);
 }
 
 ReturnInst::ReturnInst(BasicBlock *parent, Value *value)
