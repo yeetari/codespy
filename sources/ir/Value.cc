@@ -36,6 +36,11 @@ void Use::set(Value *value) {
     }
 }
 
+Value::~Value() {
+    // TODO: How does LLVM not need to do this?
+    replace_all_uses_with(nullptr);
+}
+
 void Value::add_use(Use &use) {
     use.add_to_list(&m_use_list);
 }

@@ -20,6 +20,18 @@ class Use {
     Value *m_value{nullptr};
 
 public:
+    Use() = default;
+    Use(const Use &) = delete;
+    Use(Use &&) = delete;
+    ~Use() {
+        if (m_value != nullptr) {
+            remove_from_list();
+        }
+    }
+
+    Use &operator=(const Use &) = delete;
+    Use &operator=(Use &&) = delete;
+
     void add_to_list(Use **list);
     void remove_from_list();
     void set(Value *value);
@@ -77,7 +89,9 @@ private:
 
 protected:
     Value(ValueKind kind, Type *type) : m_type(type), m_kind(kind) {}
-    ~Value() = default;
+    ~Value();
+
+    void set_type(Type *type) { m_type = type; }
 
 public:
     Value(const Value &) = delete;
