@@ -20,7 +20,10 @@ void Instruction::set_operand(unsigned index, Value *value) {
 
 void Instruction::accept(Visitor &visitor) {
     switch (m_opcode) {
-#define INST(opcode, Class) case opcode: visitor.visit(*static_cast<Class *>(this)); break;
+#define INST(opcode, Class)                                                                                            \
+    case Opcode::opcode:                                                                                               \
+        visitor.visit(*static_cast<Class *>(this));                                                                    \
+        break;
 #include <codespy/ir/Instructions.in>
     }
 }
@@ -43,7 +46,7 @@ BasicBlock *Instruction::successor(unsigned index) const {
     codespy::unreachable();
 }
 
-unsigned int Instruction::successor_count() const {
+unsigned Instruction::successor_count() const {
     if (const auto *branch = value_cast<BranchInst>(this)) {
         return branch->is_conditional() ? 2 : 1;
     }
@@ -55,7 +58,7 @@ unsigned int Instruction::successor_count() const {
 
 bool Instruction::is_terminator() const {
     switch (m_opcode) {
-#define TERM_INST(opcode, Class) case opcode:
+#define TERM_INST(opcode, Class) case Opcode::opcode:
 #include <codespy/ir/Instructions.in>
         return true;
     default:

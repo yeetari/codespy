@@ -11,31 +11,8 @@ class BasicBlock;
 class Visitor;
 
 enum class Opcode : std::uint8_t {
-    Binary,
-    Branch,
-    Call,
-    Cast,
-    Compare,
-    Load,
-    Negate,
-    Phi,
-    Return,
-    Store,
-    Switch,
-
-    // Java specific
-    // TODO: Some can be intrinsics.
-    ArrayLength,
-    InstanceOf,
-    JavaCompare,
-    LoadArray,
-    LoadField,
-    Monitor,
-    New,
-    NewArray,
-    StoreArray,
-    StoreField,
-    Throw,
+#define INST(opcode, Class) opcode,
+#include <codespy/ir/Instructions.in>
 };
 
 class Instruction : public Value, public ListNode {

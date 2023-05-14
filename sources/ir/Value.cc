@@ -68,7 +68,7 @@ void Value::destroy() {
     case ValueKind::Instruction: {
         switch (static_cast<Instruction *>(this)->opcode()) {
 #define INST(opcode, Class)                                                                                            \
-    case opcode:                                                                                                       \
+    case Opcode::opcode:                                                                                               \
         delete static_cast<Class *>(this);                                                                             \
         break;
 #include <codespy/ir/Instructions.in>
