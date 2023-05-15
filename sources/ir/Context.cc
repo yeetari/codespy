@@ -65,4 +65,12 @@ ConstantString *Context::constant_string(String value) {
     return m_string_constants.at(value).ptr();
 }
 
+PoisonValue *Context::poison_value(Type *type) {
+    auto &slot = m_poison_values[type];
+    if (!slot) {
+        slot = codespy::make_unique<PoisonValue>(type);
+    }
+    return slot.ptr();
+}
+
 } // namespace codespy::ir

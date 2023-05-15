@@ -68,6 +68,7 @@ private:
     std::unordered_map<float, UniquePtr<ConstantFloat>> m_float_constants;
     std::unordered_map<ConstantIntKey, UniquePtr<ConstantInt>, ConstantIntKeyHash> m_int_constants;
     std::unordered_map<String, UniquePtr<ConstantString>> m_string_constants;
+    std::unordered_map<Type *, UniquePtr<PoisonValue>> m_poison_values;
 
 public:
     Context();
@@ -94,6 +95,7 @@ public:
     ConstantFloat *constant_float(float value);
     ConstantInt *constant_int(IntType *type, std::int64_t value);
     ConstantString *constant_string(String value);
+    PoisonValue *poison_value(Type *type);
 };
 
 } // namespace codespy::ir

@@ -86,6 +86,8 @@ void Value::destroy() {
     case ValueKind::Local:
         delete static_cast<Local *>(this);
         break;
+    case ValueKind::Poison:
+        break;
     }
 }
 

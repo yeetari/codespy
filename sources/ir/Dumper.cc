@@ -67,6 +67,9 @@ String Dumper::value_string(Value *value) {
     if (value->kind() == ValueKind::ConstantNull) {
         return codespy::format("{} null", type_string(value->type()));
     }
+    if (value->kind() == ValueKind::Poison) {
+        return codespy::format("{} poison", type_string(value->type()));
+    }
     if (auto *constant = value_cast<ConstantDouble>(value)) {
         return codespy::format("{} ${}", type_string(constant->type()), constant->value());
     }

@@ -51,4 +51,11 @@ public:
     const String &value() const { return m_value; }
 };
 
+class PoisonValue : public Value {
+public:
+    static constexpr auto k_kind = ValueKind::Poison;
+
+    explicit PoisonValue(Type *type) : Value(k_kind, type) {}
+};
+
 } // namespace codespy::ir

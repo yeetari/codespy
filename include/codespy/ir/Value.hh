@@ -77,6 +77,7 @@ enum class ValueKind : std::uint8_t {
     Instruction,
     JavaField,
     Local,
+    Poison,
 };
 
 class Value {
