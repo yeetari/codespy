@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+// Implementation of https://www.cs.rice.edu/~keith/Embed/dom.pdf
 // A node D dominates a node N if every path from the entry to N must go from D (considered strict if N != D)
 // The set of all dominators D1, D2, Dn that dominate N is denoted Dom(N)
 // Each node N excl. the entry has an immediate dominator (idom), which is the unique node that strictly dominates N but
@@ -14,7 +15,6 @@
 // A dominator tree is a tree of immediate dominators, which is useful as a node D dominates a node N iff D is a
 //  (proper) ancestor of N in the tree
 // If D is N's immediate dominator then every node in {Dom(N) - N} is also in Dom(D)
-// Implementation of https://www.cs.rice.edu/~keith/Embed/dom.pdf
 
 namespace codespy::ir {
 
@@ -23,19 +23,25 @@ bool DominanceInfo::dominates(BasicBlock *dominator, BasicBlock *block) const {
         if (idom == dominator) {
             return true;
         }
+        if (idom == idom->parent()->entry_block()) {
+            return false;
+        }
     }
     return false;
 }
 
-bool DominanceInfo::dominates(Instruction *def, Instruction *use) const {
-    if (def == use) {
-        return true;
+bool DominanceInfo::strictly_dominates(BasicBlock *dominator, BasicBlock *block) const {
+    return dominator != block && dominates(dominator, block);
+}
+
+bool DominanceInfo::dominates(Instruction *def, Instruction *user) const {
+    if (def == user) {
+        return false;
     }
 
     auto *def_block = def->parent();
-    auto *use_block = use->parent();
-    if (def_block != use_block) {
-        return dominates(def_block, use_block);
+    if (def_block != user->parent()) {
+        return dominates(def_block, user->parent());
     }
 
     // Instructions within the same block, compare order in the instruction list.
@@ -43,19 +49,11 @@ bool DominanceInfo::dominates(Instruction *def, Instruction *use) const {
         if (inst == def) {
             return true;
         }
-        if (inst == use) {
+        if (inst == user) {
             return false;
         }
     }
     codespy::unreachable();
-}
-
-bool DominanceInfo::strictly_dominates(BasicBlock *dominator, BasicBlock *block) const {
-    return dominator != block && dominates(dominator, block);
-}
-
-bool DominanceInfo::strictly_dominates(Instruction *def, Instruction *use) const {
-    return def != use && dominates(def, use);
 }
 
 IteratorRange<std::unordered_set<BasicBlock *>::const_iterator> DominanceInfo::frontiers(BasicBlock *block) const {

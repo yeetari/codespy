@@ -21,9 +21,8 @@ public:
         : m_idoms(std::move(idoms)), m_frontiers(std::move(frontiers)) {}
 
     bool dominates(BasicBlock *dominator, BasicBlock *block) const;
-    bool dominates(Instruction *def, Instruction *use) const;
     bool strictly_dominates(BasicBlock *dominator, BasicBlock *block) const;
-    bool strictly_dominates(Instruction *def, Instruction *use) const;
+    bool dominates(Instruction *def, Instruction *user) const;
     IteratorRange<std::unordered_set<BasicBlock *>::const_iterator> frontiers(BasicBlock *block) const;
     const std::unordered_map<BasicBlock *, BasicBlock *> &idoms() const { return m_idoms; }
 };

@@ -55,6 +55,7 @@ public:
     Instruction *terminator() const;
 
     Context &context() const { return m_context; }
+    Function *parent() const { return m_parent; }
     const List<Instruction> &insts() const { return m_insts; }
     const List<ExceptionHandler> &handlers() const { return m_handlers; }
 };

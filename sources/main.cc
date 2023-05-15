@@ -11,6 +11,7 @@
 #include <codespy/support/Print.hh>
 #include <codespy/support/SpanStream.hh>
 #include <codespy/support/StringBuilder.hh>
+#include <codespy/transform/LocalPromoter.hh>
 
 #include <fstream>
 #include <iostream>
@@ -42,6 +43,7 @@ int main(int, char **argv) {
     auto class_map = std::move(frontend.class_map());
     for (const auto &[name, clazz] : class_map) {
         for (auto *function : clazz.methods()) {
+            ir::promote_locals(function);
             codespy::println(ir::dump_code(function));
         }
     }
