@@ -21,7 +21,6 @@ namespace codespy::ir {
 namespace {
 
 class Dumper final : public Visitor {
-    Function *m_function;
     StringBuilder m_sb;
     std::unordered_map<BasicBlock *, std::size_t> m_block_map;
     std::unordered_map<Value *, std::size_t> m_value_map;
@@ -103,7 +102,6 @@ void dfs(Vector<BasicBlock *> &post_order, std::unordered_set<BasicBlock *> &vis
 }
 
 void Dumper::run_on(Function *function) {
-    m_function = function;
     m_sb.append("{} @{}(", type_string(function->function_type()->return_type()), function->display_name());
     for (auto *argument : function->arguments()) {
         if (argument->index() != 0) {
