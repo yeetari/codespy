@@ -26,7 +26,8 @@ class LocalPromoter {
     std::unordered_set<BasicBlock *> m_visited_blocks;
 
 public:
-    LocalPromoter(Function *function, DominanceInfo &&dom_info) : m_function(function), m_dom_info(std::move(dom_info)) {}
+    LocalPromoter(Function *function, DominanceInfo &&dom_info)
+        : m_function(function), m_dom_info(std::move(dom_info)) {}
 
     bool handle_trivial_local(Local *local);
     void rename_recursive(BasicBlock *block);
@@ -59,8 +60,12 @@ bool LocalPromoter::handle_trivial_local(Local *local) {
 
     // No stores, every use is undefined.
     if (has_single_store && single_store == nullptr) {
-        // TODO: Replace loads with undef value.
-        assert(false);
+        for (auto *user : codespy::adapt_mutable_range(local->users())) {
+            if (auto *load = ir::value_cast<LoadInst>(user)) {
+                load->replace_all_uses_with(m_function->context().poison_value(load->type()));
+                load->remove_from_parent();
+            }
+        }
         return true;
     }
 
@@ -69,9 +74,9 @@ bool LocalPromoter::handle_trivial_local(Local *local) {
         // the store dominates the use or not respectively.
         for (auto *user : codespy::adapt_mutable_range(local->users())) {
             if (auto *load = ir::value_cast<LoadInst>(user)) {
-                // TODO: undef value.
-                auto *reaching_value = m_dom_info.dominates(single_store, load) ? single_store->value() : nullptr;
-                assert(reaching_value != nullptr);
+                auto *reaching_value = m_dom_info.dominates(single_store, load)
+                                           ? single_store->value()
+                                           : m_function->context().poison_value(load->type());
                 load->replace_all_uses_with(reaching_value);
                 load->remove_from_parent();
             }
@@ -89,8 +94,8 @@ bool LocalPromoter::handle_trivial_local(Local *local) {
     for (auto *inst : codespy::adapt_mutable_range(*single_block)) {
         if (auto *load = ir::value_cast<LoadInst>(inst)) {
             if (load->pointer() == local) {
-                assert(reaching_value != nullptr);
-                load->replace_all_uses_with(reaching_value);
+                load->replace_all_uses_with(
+                    reaching_value != nullptr ? reaching_value : m_function->context().poison_value(load->type()));
                 load->remove_from_parent();
             }
         } else if (auto *store = ir::value_cast<StoreInst>(inst)) {
@@ -109,21 +114,19 @@ void LocalPromoter::rename_recursive(BasicBlock *block) {
     }
 
     // Symbolic execution of memory operations.
+    // TODO: Assuming all locals promotable here, may not be in the future.
     for (auto *inst : *block) {
         if (auto *load = ir::value_cast<LoadInst>(inst)) {
-            auto *local = ir::value_cast<Local>(load->pointer());
-            if (local != nullptr && !m_reaching_value_map[local].empty()) {
+            if (auto *local = ir::value_cast<Local>(load->pointer())) {
                 load->replace_all_uses_with(m_reaching_value_map.at(local).last());
             }
         } else if (auto *store = ir::value_cast<StoreInst>(inst)) {
-            // TODO: Assuming all locals promotable here, may not be in the future.
-            auto *local = ir::value_cast<Local>(store->pointer());
-            if (local != nullptr) {
-                m_reaching_value_map[local].push(store->value());
+            if (auto *local = ir::value_cast<Local>(store->pointer())) {
+                m_reaching_value_map.at(local).push(store->value());
             }
         } else if (auto *phi = ir::value_cast<PhiInst>(inst); m_phi_info_map.contains(phi)) {
             const auto &info = m_phi_info_map.at(phi);
-            m_reaching_value_map[info.local].push(phi);
+            m_reaching_value_map.at(info.local).push(phi);
         }
     }
 
@@ -141,10 +144,7 @@ void LocalPromoter::rename_recursive(BasicBlock *block) {
                 continue;
             }
             auto &info = m_phi_info_map.at(phi);
-            auto *reaching_value = block->context().constant_null();
-            if (!m_reaching_value_map[info.local].empty()) {
-                reaching_value = m_reaching_value_map[info.local].last();
-            }
+            auto *reaching_value = m_reaching_value_map.at(info.local).last();
             phi->set_incoming(info.incoming_index++, block, reaching_value);
         }
     }
@@ -156,20 +156,17 @@ void LocalPromoter::rename_recursive(BasicBlock *block) {
 
     for (auto *inst : codespy::adapt_mutable_range(*block)) {
         if (auto *load = ir::value_cast<LoadInst>(inst)) {
-            auto *local = ir::value_cast<Local>(load->pointer());
-            if (local != nullptr) {
+            if (ir::value_is<Local>(load->pointer())) {
                 load->remove_from_parent();
             }
         } else if (auto *store = ir::value_cast<StoreInst>(inst)) {
-            // TODO: Assuming all locals promotable here, may not be in the future.
-            auto *local = ir::value_cast<Local>(store->pointer());
-            if (local != nullptr) {
-                m_reaching_value_map[local].pop();
+            if (auto *local = ir::value_cast<Local>(store->pointer())) {
+                m_reaching_value_map.at(local).pop();
                 store->remove_from_parent();
             }
         } else if (auto *phi = ir::value_cast<PhiInst>(inst); m_phi_info_map.contains(phi)) {
             const auto &info = m_phi_info_map.at(phi);
-            m_reaching_value_map[info.local].pop();
+            m_reaching_value_map.at(info.local).pop();
         }
     }
 }
@@ -202,6 +199,10 @@ void LocalPromoter::run() {
     if (m_function->locals().empty()) {
         // No locals left, nothing else to do.
         return;
+    }
+
+    for (auto *local : m_function->locals()) {
+        m_reaching_value_map[local].push(m_function->context().poison_value(local->type()));
     }
 
     // Rename pass.
