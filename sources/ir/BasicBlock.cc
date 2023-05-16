@@ -13,6 +13,10 @@ void BasicBlock::add_handler(Type *exception_type, BasicBlock *target) {
 }
 
 void BasicBlock::remove(Instruction *inst) {
+    if (ir::value_is<ExceptionHandler>(inst)) {
+        m_handlers.erase(List<ExceptionHandler>::iterator(inst));
+        return;
+    }
     m_insts.erase(iterator(inst));
 }
 
