@@ -3,6 +3,7 @@
 #include <codespy/ir/BasicBlock.hh>
 #include <codespy/ir/Cfg.hh>
 #include <codespy/ir/Function.hh>
+#include <codespy/support/Print.hh>
 
 #include <unordered_map>
 #include <unordered_set>
@@ -23,7 +24,7 @@ bool DominanceInfo::dominates(BasicBlock *dominator, BasicBlock *block) const {
         if (idom == dominator) {
             return true;
         }
-        if (idom == idom->parent()->entry_block()) {
+        if (idom == m_idoms.at(idom)) {
             return false;
         }
     }
@@ -138,6 +139,67 @@ DominanceInfo compute_dominance(Function *function) {
         }
     }
     return {std::move(idoms), std::move(frontiers)};
+}
+
+static void dfs_post(std::unordered_map<BasicBlock *, unsigned> &index_map, Vector<BasicBlock *> &post_order,
+                     BasicBlock *block) {
+    index_map[block];
+    for (auto *pred : ir::preds_of(block)) {
+        if (!index_map.contains(pred)) {
+            dfs_post(index_map, post_order, pred);
+        }
+    }
+    index_map[block] = post_order.size();
+    post_order.push(block);
+}
+
+DominanceInfo compute_post_dominance(Function *function) {
+    if (function->blocks().empty()) {
+        return {{}, {}};
+    }
+
+    std::unordered_map<BasicBlock *, unsigned> index_map;
+    Vector<BasicBlock *> order;
+    dfs_post(index_map, order, function->blocks().last());
+
+    std::unordered_map<BasicBlock *, BasicBlock *> idoms;
+    idoms.emplace(function->blocks().last(), function->blocks().last());
+
+    auto intersect = [&](BasicBlock *finger1, BasicBlock *finger2) {
+        while (finger1 != finger2) {
+            while (index_map.at(finger1) < index_map.at(finger2)) {
+                finger1 = idoms.at(finger1);
+            }
+            while (index_map.at(finger2) < index_map.at(finger1)) {
+                finger2 = idoms.at(finger2);
+            }
+        }
+        return finger1;
+    };
+
+    bool changed = false;
+    do {
+        // For all nodes in reverse postorder (excl. entry)
+        for (unsigned i = order.size() - 1; i > 0; i--) {
+            auto *block = order[i - 1];
+
+            // For all other predecessors of block
+            ir::BasicBlock *new_idom = nullptr;
+            for (auto *succ : ir::succs_of(block)) {
+                if (!idoms.contains(succ)) {
+                    continue;
+                }
+                if (new_idom == nullptr) {
+                    new_idom = succ;
+                } else {
+                    new_idom = intersect(succ, new_idom);
+                }
+            }
+
+            changed |= std::exchange(idoms[block], new_idom) != new_idom;
+        }
+    } while (std::exchange(changed, false));
+    return {std::move(idoms), {}};
 }
 
 } // namespace codespy::ir

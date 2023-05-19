@@ -62,6 +62,7 @@ String Dumper::value_string(Value *value) {
         return codespy::format("{} %a{}", type_string(argument->type()), argument->index());
     }
     if (auto *block = value_cast<BasicBlock>(value)) {
+        return block->name;
         return codespy::format("L{}", m_block_map.at(block));
     }
     if (value->kind() == ValueKind::ConstantNull) {

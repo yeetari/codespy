@@ -3,6 +3,7 @@
 #include <codespy/bytecode/Frontend.hh>
 #include <codespy/bytecode/Visitor.hh>
 #include <codespy/container/Vector.hh>
+#include <codespy/decompiler/Decompiler.hh>
 #include <codespy/ir/Context.hh>
 #include <codespy/ir/Dumper.hh>
 #include <codespy/ir/Function.hh>
@@ -13,6 +14,8 @@
 #include <codespy/support/StringBuilder.hh>
 #include <codespy/transform/ExceptionPruner.hh>
 #include <codespy/transform/LocalPromoter.hh>
+#include <codespy/ir/Function.hh>
+#include <codespy/ir/Instructions.hh>
 
 #include <fstream>
 #include <iostream>
@@ -22,6 +25,90 @@ using namespace codespy;
 
 int main(int, char **argv) {
     ir::Context context;
+
+//    auto *function = new ir::Function(context, "main", context.function_type(context.void_type(), {}));
+
+    // From paper
+//    auto *A = function->append_block();
+//    auto *B = function->append_block();
+//    auto *C = function->append_block();
+//    auto *D = function->append_block();
+//    auto *E = function->append_block();
+//    auto *F = function->append_block();
+//    A->append<ir::BranchInst>(B, D, context.constant_int(context.int_type(1), 0));
+//    B->append<ir::BranchInst>(C, E, context.constant_int(context.int_type(1), 0));
+//    C->append<ir::BranchInst>(F);
+//    D->append<ir::BranchInst>(E, F, context.constant_int(context.int_type(1), 0));
+//    E->append<ir::BranchInst>(F);
+//    F->append<ir::ReturnInst>(nullptr);
+
+    // One if.
+//    auto *A = function->append_block();
+//    auto *B = function->append_block();
+//    auto *C = function->append_block();
+//    auto *D = function->append_block();
+//    A->append<ir::BranchInst>(B, C, context.constant_int(context.int_type(1), 0));
+//    B->append<ir::BranchInst>(D);
+//    C->append<ir::BranchInst>(D);
+//    D->append<ir::ReturnInst>(nullptr);
+//    A->name = "A";
+//    B->name = "B";
+//    C->name = "C";
+//    D->name = "D";
+
+    // Two ifs.
+//    auto *A = function->append_block();
+//    auto *B = function->append_block();
+//    auto *C = function->append_block();
+//    auto *D = function->append_block();
+//    auto *E = function->append_block();
+//    auto *F = function->append_block();
+//    auto *G = function->append_block();
+//    A->append<ir::BranchInst>(B, C, context.constant_int(context.int_type(1), 0));
+//    B->append<ir::BranchInst>(D);
+//    C->append<ir::BranchInst>(D);
+//    D->append<ir::BranchInst>(E, F, context.constant_int(context.int_type(1), 0));
+//    E->append<ir::BranchInst>(G);
+//    F->append<ir::BranchInst>(G);
+//    G->append<ir::ReturnInst>(nullptr);
+//    A->name = "A";
+//    B->name = "B";
+//    C->name = "C";
+//    D->name = "D";
+//    E->name = "E";
+//    F->name = "F";
+//    G->name = "G";
+
+//    auto *start = function->append_block();
+//    auto *A = function->append_block();
+//    auto *B = function->append_block();
+//    auto *C = function->append_block();
+//    auto *D = function->append_block();
+//    auto *E = function->append_block();
+//    auto *F = function->append_block();
+//    auto *end = function->append_block();
+//    start->append<ir::BranchInst>(A);
+//    A->append<ir::BranchInst>(B, C, context.constant_int(context.int_type(1), 0));
+//    B->append<ir::BranchInst>(D);
+//    C->append<ir::BranchInst>(D);
+//    D->append<ir::BranchInst>(E);
+//    E->append<ir::BranchInst>(F);
+//    F->append<ir::BranchInst>(E, end, context.constant_int(context.int_type(1), 0));
+//    end->append<ir::ReturnInst>(nullptr);
+
+//    start->name = "Start";
+//    A->name = "A";
+//    B->name = "B";
+//    C->name = "C";
+//    D->name = "D";
+//    E->name = "E";
+//    F->name = "F";
+//    end->name = "End";
+
+//    codespy::println(ir::dump_code(function));
+//    codespy::decompile(function);
+
+
     bc::Frontend frontend(context);
 
     mz_zip_archive zip_archive{};
@@ -47,6 +134,7 @@ int main(int, char **argv) {
             ir::prune_exceptions(function);
             ir::promote_locals(function);
             codespy::println(ir::dump_code(function));
+//            codespy::decompile(function);
         }
     }
 }

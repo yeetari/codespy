@@ -2,6 +2,7 @@ target_sources(codespy PRIVATE
     bytecode/ClassFile.cc
     bytecode/Dumper.cc
     bytecode/Frontend.cc
+    decompiler/Decompiler.cc
     ir/BasicBlock.cc
     ir/Context.cc
     ir/Dominance.cc

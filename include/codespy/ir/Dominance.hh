@@ -28,5 +28,6 @@ public:
 };
 
 DominanceInfo compute_dominance(Function *function);
+DominanceInfo compute_post_dominance(Function *function);
 
 } // namespace codespy::ir

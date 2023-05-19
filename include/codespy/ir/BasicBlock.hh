@@ -29,6 +29,8 @@ class BasicBlock : public Value, public ListNode {
 public:
     static constexpr auto k_kind = ValueKind::BasicBlock;
 
+    const char *name;
+
     BasicBlock(Context &context, Function *parent);
 
     using iterator = decltype(m_insts)::iterator;
