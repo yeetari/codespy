@@ -15,6 +15,7 @@ target_sources(codespy PRIVATE
     support/Stream.cc
     support/String.cc
     support/StringBuilder.cc
+    transform/CfgSimplifier.cc
     transform/ExceptionPruner.cc
     transform/LocalPromoter.cc
     main.cc)

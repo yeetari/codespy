@@ -18,12 +18,6 @@ void prune_exceptions(Function *function) {
             }
         }
     }
-
-    for (auto *block : codespy::adapt_mutable_range(function->blocks())) {
-        if (!block->has_uses() && block != function->entry_block()) {
-            block->remove_from_parent();
-        }
-    }
 }
 
 } // namespace codespy::ir

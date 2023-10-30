@@ -11,6 +11,7 @@
 #include <codespy/support/Print.hh>
 #include <codespy/support/SpanStream.hh>
 #include <codespy/support/StringBuilder.hh>
+#include <codespy/transform/CfgSimplifier.hh>
 #include <codespy/transform/ExceptionPruner.hh>
 #include <codespy/transform/LocalPromoter.hh>
 
@@ -45,7 +46,9 @@ int main(int, char **argv) {
     for (const auto &[name, clazz] : class_map) {
         for (auto *function : clazz.methods()) {
             ir::prune_exceptions(function);
+            ir::simplify_cfg(function);
             ir::promote_locals(function);
+            ir::simplify_cfg(function);
             codespy::println(ir::dump_code(function));
         }
     }
