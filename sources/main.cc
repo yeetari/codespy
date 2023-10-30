@@ -44,6 +44,9 @@ int main(int, char **argv) {
 
     auto class_map = std::move(frontend.class_map());
     for (const auto &[name, clazz] : class_map) {
+        if (name.length() > 16 && memcmp(name.data(), "org/bouncycastle", 16) == 0) {
+            continue;
+        }
         for (auto *function : clazz.methods()) {
             ir::prune_exceptions(function);
             ir::simplify_cfg(function);
