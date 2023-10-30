@@ -1,10 +1,16 @@
 #pragma once
 
 #include <codespy/bytecode/Visitor.hh>
+#include <codespy/support/StringBuilder.hh>
 
 namespace codespy::bc {
 
 class Dumper : public ClassVisitor, public CodeVisitor {
+    String m_this_name;
+    StringBuilder m_sb;
+
+    void print_prefix_type(BaseType type);
+
 public:
     void visit(StringView this_name, StringView super_name) override;
     void visit_field(StringView name, StringView descriptor) override;
@@ -35,6 +41,9 @@ public:
                             Span<std::int32_t> table) override;
     void visit_lookup_switch(std::int32_t default_pc, Span<std::pair<std::int32_t, std::int32_t>> table) override;
     void visit_return(BaseType type) override;
+
+    String build() { return m_sb.build(); }
+    const String &this_name() const { return m_this_name; }
 };
 
 } // namespace codespy::bc

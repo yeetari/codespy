@@ -2,6 +2,10 @@ target_sources(codespy PRIVATE
     bytecode/ClassFile.cc
     bytecode/Dumper.cc
     bytecode/Frontend.cc
+    gui/IrHighlighter.cc
+    gui/MainWindow.cc
+    gui/TextEdit.cc
+    gui/TreeModel.cc
     ir/BasicBlock.cc
     ir/Context.cc
     ir/Dominance.cc

@@ -1,36 +1,34 @@
 #include <codespy/bytecode/Dumper.hh>
 
 #include <codespy/bytecode/ClassFile.hh>
-#include <codespy/support/Print.hh>
 
 namespace codespy::bc {
-namespace {
 
-void print_prefix_type(BaseType type) {
+void Dumper::print_prefix_type(BaseType type) {
     switch (type) {
     case BaseType::Int:
-        codespy::print('i');
+        m_sb.append('i');
         break;
     case BaseType::Long:
-        codespy::print('l');
+        m_sb.append('l');
         break;
     case BaseType::Float:
-        codespy::print('f');
+        m_sb.append('f');
         break;
     case BaseType::Double:
-        codespy::print('d');
+        m_sb.append('d');
         break;
     case BaseType::Reference:
-        codespy::print('a');
+        m_sb.append('a');
         break;
     case BaseType::Byte:
-        codespy::print('b');
+        m_sb.append('b');
         break;
     case BaseType::Char:
-        codespy::print('c');
+        m_sb.append('c');
         break;
     case BaseType::Short:
-        codespy::print('s');
+        m_sb.append('s');
         break;
     case BaseType::Void:
         break;
@@ -39,148 +37,147 @@ void print_prefix_type(BaseType type) {
     }
 }
 
-} // namespace
-
 void Dumper::visit(StringView this_name, StringView super_name) {
     // TODO: Access flags.
     // TODO: Interfaces.
-    codespy::println("class {} extends {}", this_name, super_name);
+    m_this_name = this_name;
+    m_sb.append("class {} extends {}\n", this_name, super_name);
 }
 
 void Dumper::visit_field(StringView name, StringView descriptor) {
-    codespy::println("field {} {}", name, descriptor);
+    m_sb.append("field {} {}\n", name, descriptor);
 }
 
 void Dumper::visit_method(AccessFlags, StringView name, StringView descriptor) {
     // TODO: Access flags.
-    codespy::println("\nmethod {} {}", name, descriptor);
+    m_sb.append("\nmethod {} {}\n", name, descriptor);
 }
 
 void Dumper::visit_code(CodeAttribute &code) {
     for (std::int32_t pc = 0; pc < code.code_end();) {
-        codespy::print("    {d4 }: ", pc);
+        m_sb.append("    {d4 }: ", pc);
         pc += CODESPY_EXPECT(code.parse_inst(pc, *this));
     }
 }
 
 void Dumper::visit_exception_range(std::int32_t start_pc, std::int32_t end_pc, std::int32_t handler_pc,
                                    StringView type_name) {
-    codespy::println("{}: {} -> {} handled by {}", type_name, start_pc, end_pc, handler_pc);
+    m_sb.append("{}: {} -> {} handled by {}\n", type_name, start_pc, end_pc, handler_pc);
 }
 
 void Dumper::visit_constant(Constant constant) {
     if (constant.has<NullReference>()) {
-        codespy::println("aconst_null");
+        m_sb.append("aconst_null\n");
     } else if (constant.has<std::int32_t>()) {
         const auto value = constant.get<std::int32_t>();
         if (value == -1) {
-            codespy::println("iconst_m1");
+            m_sb.append("iconst_m1\n");
         } else if (value >= 0 && value <= 5) {
-            codespy::println("iconst_{}", value);
+            m_sb.append("iconst_{}\n", value);
         } else if (value >= -128 && value <= 127) {
-            codespy::println("bipush ${}", value);
+            m_sb.append("bipush ${}\n", value);
         } else if (value >= -32768 && value <= 32767) {
-            codespy::println("sipush ${}", value);
+            m_sb.append("sipush ${}\n", value);
         } else {
-            codespy::println("ldc ${}", value);
+            m_sb.append("ldc ${}\n", value);
         }
     } else if (constant.has<std::int64_t>()) {
         const auto value = constant.get<std::int64_t>();
         if (value == 0) {
-            codespy::println("lconst_0");
+            m_sb.append("lconst_0\n");
         } else if (value == 1) {
-            codespy::println("lconst_1");
+            m_sb.append("lconst_1\n");
         } else {
-            codespy::println("ldc ${}", value);
+            m_sb.append("ldc ${}\n", value);
         }
     } else if (constant.has<float>()) {
         const auto value = constant.get<float>();
         if (value == 0.0f) {
-            codespy::println("fconst_0");
+            m_sb.append("fconst_0\n");
         } else if (value == 1.0f) {
-            codespy::println("fconst_1");
+            m_sb.append("fconst_1\n");
         } else if (value == 2.0f) {
-            codespy::println("fconst_2");
+            m_sb.append("fconst_2\n");
         } else {
-            codespy::println("ldc ${}", value);
+            m_sb.append("ldc ${}\n", value);
         }
     } else if (constant.has<double>()) {
         const auto value = constant.get<double>();
         if (value == 0.0) {
-            codespy::println("dconst_0");
+            m_sb.append("dconst_0\n");
         } else if (value == 1.0) {
-            codespy::println("dconst_1");
+            m_sb.append("dconst_1\n");
         } else {
-            codespy::println("ldc ${}", value);
+            m_sb.append("ldc ${}\n", value);
         }
     } else if (constant.has<StringView>()) {
-        codespy::println("ldc \"{}\"", constant.get<StringView>());
+        m_sb.append("ldc \"{}\"\n", constant.get<StringView>());
     }
 }
 
 void Dumper::visit_load(BaseType type, std::uint8_t local_index) {
     print_prefix_type(type);
-    codespy::println("load {}", local_index);
+    m_sb.append("load {}\n", local_index);
 }
 
 void Dumper::visit_store(BaseType type, std::uint8_t local_index) {
     print_prefix_type(type);
-    codespy::println("store {}", local_index);
+    m_sb.append("store {}\n", local_index);
 }
 
 void Dumper::visit_array_load(BaseType type) {
     print_prefix_type(type);
-    codespy::println("aload");
+    m_sb.append("aload\n");
 }
 
 void Dumper::visit_array_store(BaseType type) {
     print_prefix_type(type);
-    codespy::println("astore");
+    m_sb.append("astore\n");
 }
 
 void Dumper::visit_cast(BaseType from_type, BaseType to_type) {
     print_prefix_type(from_type);
-    codespy::print('2');
+    m_sb.append('2');
     print_prefix_type(to_type);
-    codespy::print('\n');
+    m_sb.append('\n');
 }
 
 void Dumper::visit_compare(BaseType type, bool greater_on_nan) {
     print_prefix_type(type);
-    codespy::print("cmp");
+    m_sb.append("cmp");
     if (type == BaseType::Float || type == BaseType::Double) {
         if (greater_on_nan) {
-            codespy::print('g');
+            m_sb.append('g');
         } else {
-            codespy::print('l');
+            m_sb.append('l');
         }
     }
-    codespy::print('\n');
+    m_sb.append('\n');
 }
 
 void Dumper::visit_new(StringView descriptor, std::uint8_t dimensions) {
-    codespy::print("new {}", descriptor);
+    m_sb.append("new {}", descriptor);
     if (dimensions != 1) {
-        codespy::println(", {}", dimensions);
+        m_sb.append(", {}\n", dimensions);
     } else {
-        codespy::print('\n');
+        m_sb.append('\n');
     }
 }
 
 void Dumper::visit_get_field(StringView owner, StringView name, StringView descriptor, bool instance) {
     const char *kind_string = instance ? "field" : "static";
-    codespy::println("get{} {}.{}:{}", kind_string, owner, name, descriptor);
+    m_sb.append("get{} {}.{}:{}\n", kind_string, owner, name, descriptor);
 }
 
 void Dumper::visit_put_field(StringView owner, StringView name, StringView descriptor, bool instance) {
     const char *kind_string = instance ? "field" : "static";
-    codespy::println("put{} {}.{}:{}", kind_string, owner, name, descriptor);
+    m_sb.append("put{} {}.{}:{}\n", kind_string, owner, name, descriptor);
 }
 
 void Dumper::visit_invoke(InvokeKind kind, StringView owner, StringView name, StringView descriptor) {
     Array kind_strings{"interface", "special", "static", "virtual"};
     const auto *kind_string = kind_strings[codespy::to_underlying(kind)];
-    codespy::println("invoke{} {}.{}:{}", kind_string, owner, name, descriptor);
+    m_sb.append("invoke{} {}.{}:{}\n", kind_string, owner, name, descriptor);
 }
 
 void Dumper::visit_math_op(BaseType type, MathOp math_op) {
@@ -188,40 +185,40 @@ void Dumper::visit_math_op(BaseType type, MathOp math_op) {
     switch (math_op) {
         using enum MathOp;
     case Add:
-        codespy::println("add");
+        m_sb.append("add\n");
         break;
     case Sub:
-        codespy::println("sub");
+        m_sb.append("sub\n");
         break;
     case Mul:
-        codespy::println("mul");
+        m_sb.append("mul\n");
         break;
     case Div:
-        codespy::println("div");
+        m_sb.append("div\n");
         break;
     case Rem:
-        codespy::println("rem");
+        m_sb.append("rem\n");
         break;
     case Neg:
-        codespy::println("neg");
+        m_sb.append("neg\n");
         break;
     case Shl:
-        codespy::println("shl");
+        m_sb.append("shl\n");
         break;
     case Shr:
-        codespy::println("shr");
+        m_sb.append("shr\n");
         break;
     case UShr:
-        codespy::println("ushr");
+        m_sb.append("ushr\n");
         break;
     case And:
-        codespy::println("and");
+        m_sb.append("and\n");
         break;
     case Or:
-        codespy::println("or");
+        m_sb.append("or\n");
         break;
     case Xor:
-        codespy::println("xor");
+        m_sb.append("xor\n");
         break;
     }
 }
@@ -230,10 +227,10 @@ void Dumper::visit_monitor_op(MonitorOp monitor_op) {
     switch (monitor_op) {
         using enum MonitorOp;
     case Enter:
-        codespy::println("monitorenter");
+        m_sb.append("monitorenter\n");
         break;
     case Exit:
-        codespy::println("monitorexit");
+        m_sb.append("monitorexit\n");
         break;
     }
 }
@@ -242,10 +239,10 @@ void Dumper::visit_reference_op(ReferenceOp reference_op) {
     switch (reference_op) {
         using enum ReferenceOp;
     case ArrayLength:
-        codespy::println("arraylength");
+        m_sb.append("arraylength\n");
         break;
     case Throw:
-        codespy::println("athrow");
+        m_sb.append("athrow\n");
         break;
     }
 }
@@ -254,31 +251,31 @@ void Dumper::visit_stack_op(StackOp stack_op) {
     switch (stack_op) {
         using enum StackOp;
     case Pop:
-        codespy::println("pop");
+        m_sb.append("pop\n");
         break;
     case Pop2:
-        codespy::println("pop2");
+        m_sb.append("pop2\n");
         break;
     case Dup:
-        codespy::println("dup");
+        m_sb.append("dup\n");
         break;
     case DupX1:
-        codespy::println("dup_x1");
+        m_sb.append("dup_x1\n");
         break;
     case DupX2:
-        codespy::println("dup_x2");
+        m_sb.append("dup_x2\n");
         break;
     case Dup2:
-        codespy::println("dup2");
+        m_sb.append("dup2\n");
         break;
     case Dup2X1:
-        codespy::println("dup2_x1");
+        m_sb.append("dup2_x1\n");
         break;
     case Dup2X2:
-        codespy::println("dup2_x2");
+        m_sb.append("dup2_x2\n");
         break;
     case Swap:
-        codespy::println("swap");
+        m_sb.append("swap\n");
         break;
     }
 }
@@ -287,82 +284,82 @@ void Dumper::visit_type_op(TypeOp type_op, StringView descriptor) {
     switch (type_op) {
         using enum TypeOp;
     case CheckCast:
-        codespy::println("checkcast {}", descriptor);
+        m_sb.append("checkcast {}\n", descriptor);
         break;
     case InstanceOf:
-        codespy::println("instanceof {}", descriptor);
+        m_sb.append("instanceof {}\n", descriptor);
         break;
     }
 }
 
 void Dumper::visit_iinc(std::uint8_t local_index, std::int32_t increment) {
-    codespy::println("iinc {}, {}", local_index, increment);
+    m_sb.append("iinc {}, {}\n", local_index, increment);
 }
 
 void Dumper::visit_goto(std::int32_t offset) {
-    codespy::println("goto {}", offset);
+    m_sb.append("goto {}\n", offset);
 }
 
 void Dumper::visit_if_compare(CompareOp compare_op, std::int32_t true_offset, CompareRhs compare_rhs) {
-    codespy::print("if");
+    m_sb.append("if");
     if (compare_rhs == CompareRhs::Null) {
         if (compare_op == CompareOp::ReferenceNotEqual) {
-            codespy::print("non");
+            m_sb.append("non");
         }
-        codespy::println("null {}", true_offset);
+        m_sb.append("null {}\n", true_offset);
         return;
     }
 
     if (compare_op == CompareOp::ReferenceEqual || compare_op == CompareOp::ReferenceNotEqual) {
-        codespy::print("_acmp");
+        m_sb.append("_acmp");
     } else if (compare_rhs != CompareRhs::Zero) {
-        codespy::print("_icmp");
+        m_sb.append("_icmp");
     }
     switch (compare_op) {
         using enum CompareOp;
     case Equal:
     case ReferenceEqual:
-        codespy::println("eq {}", true_offset);
+        m_sb.append("eq {}\n", true_offset);
         break;
     case NotEqual:
     case ReferenceNotEqual:
-        codespy::println("ne {}", true_offset);
+        m_sb.append("ne {}\n", true_offset);
         break;
     case LessThan:
-        codespy::println("lt {}", true_offset);
+        m_sb.append("lt {}\n", true_offset);
         break;
     case GreaterEqual:
-        codespy::println("ge {}", true_offset);
+        m_sb.append("ge {}\n", true_offset);
         break;
     case GreaterThan:
-        codespy::println("gt {}", true_offset);
+        m_sb.append("gt {}\n", true_offset);
         break;
     case LessEqual:
-        codespy::println("le {}", true_offset);
+        m_sb.append("le {}\n", true_offset);
         break;
     }
 }
 
 void Dumper::visit_table_switch(std::int32_t low, std::int32_t high, std::int32_t default_pc,
                                 Span<std::int32_t> table) {
-    codespy::println("tableswitch");
+    m_sb.append("tableswitch\n");
     for (std::int32_t i = low; i <= high; i++) {
-        codespy::println("            {}: {}", i, table[i - low]);
+        m_sb.append("            {}: {}\n", i, table[i - low]);
     }
-    codespy::println("            default: {}", default_pc);
+    m_sb.append("            default: {}\n", default_pc);
 }
 
 void Dumper::visit_lookup_switch(std::int32_t default_pc, Span<std::pair<std::int32_t, std::int32_t>> table) {
-    codespy::println("lookupswitch");
+    m_sb.append("lookupswitch\n");
     for (auto &entry : table) {
-        codespy::println("            {}: {}", entry.first, entry.second);
+        m_sb.append("            {}: {}\n", entry.first, entry.second);
     }
-    codespy::println("            default: {}", default_pc);
+    m_sb.append("            default: {}\n", default_pc);
 }
 
 void Dumper::visit_return(BaseType type) {
     print_prefix_type(type);
-    codespy::println("return");
+    m_sb.append("return\n");
 }
 
 } // namespace codespy::bc
