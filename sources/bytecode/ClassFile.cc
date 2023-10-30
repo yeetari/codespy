@@ -347,7 +347,7 @@ Result<std::int32_t, ParseError, StreamError> CodeAttribute::parse_inst(std::int
     // d2<x>
     if (opcode >= Opcode::D2I && opcode < Opcode::I2B) {
         // [0, 1, 2] -> [0, 1, 2]
-        const auto to_type = static_cast<BaseType>(opcode - Opcode::F2I);
+        const auto to_type = static_cast<BaseType>(opcode - Opcode::D2I);
         visitor.visit_cast(BaseType::Double, to_type);
         return 1;
     }
