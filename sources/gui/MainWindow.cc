@@ -1,9 +1,9 @@
 #include <codespy/gui/MainWindow.hh>
 
+#include <codespy/gui/BytecodeHighlighter.hh>
 #include <codespy/gui/IrHighlighter.hh>
 #include <codespy/gui/TextEdit.hh>
 #include <codespy/gui/TreeModel.hh>
-#include <codespy/support/Print.hh>
 
 #include <QHBoxLayout>
 #include <QLabel>
@@ -41,7 +41,9 @@ MainWindow::MainWindow(Vector<ClassData> &&classes) {
     ir_editor->setFont(font);
     ir_editor->setReadOnly(true);
 
-    auto *bc_editor = new TextEdit(centralWidget());
+    auto *bc_editor = new QPlainTextEdit(centralWidget());
+    new BytecodeHighlighter(bc_editor->document());
+    bc_editor->setLineWrapMode(QPlainTextEdit::NoWrap);
     bc_editor->setFont(font);
     bc_editor->setReadOnly(true);
 

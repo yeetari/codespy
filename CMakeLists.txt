@@ -11,6 +11,7 @@ target_include_directories(codespy PUBLIC include)
 target_link_libraries(codespy PRIVATE miniz::miniz Qt5::Widgets)
 
 qt5_wrap_cpp(MOC_SOURCES
+    include/codespy/gui/BytecodeHighlighter.hh
     include/codespy/gui/IrHighlighter.hh
     include/codespy/gui/MainWindow.hh
     include/codespy/gui/TextEdit.hh
