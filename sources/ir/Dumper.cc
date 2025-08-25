@@ -14,6 +14,7 @@
 #include <codespy/support/String.hh>
 #include <codespy/support/StringBuilder.hh>
 
+#include <algorithm>
 #include <unordered_map>
 #include <unordered_set>
 
